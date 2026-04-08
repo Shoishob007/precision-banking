@@ -21,7 +21,7 @@ export default function Auth({ onLogin }: AuthProps) {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    
+
     // Simulate API call
     setTimeout(() => {
       setIsLoading(false);
@@ -40,7 +40,7 @@ export default function Auth({ onLogin }: AuthProps) {
         <div className="absolute bottom-0 right-0 w-[500px] h-[500px] border-l border-t border-on-surface"></div>
       </div>
 
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         className="w-full max-w-md bg-surface-container-lowest p-10 rounded-2xl shadow-[0px_40px_80px_rgba(0,0,0,0.05)] relative z-10"
@@ -49,12 +49,12 @@ export default function Auth({ onLogin }: AuthProps) {
           <div className="w-16 h-16 bg-primary rounded-2xl flex items-center justify-center text-on-primary mb-6 shadow-lg shadow-primary/20">
             <Shield size={32} />
           </div>
-          <h1 className="text-2xl font-black tracking-tighter text-on-surface uppercase">Precision Editorial</h1>
+          <h1 className="text-2xl font-black tracking-tighter text-on-surface uppercase">Precision Banking</h1>
           <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-[0.3em] mt-2">Secure Access Protocol</p>
         </div>
 
         <div className="flex bg-surface-container-low p-1 rounded-lg mb-8">
-          <button 
+          <button
             onClick={() => setIsLogin(true)}
             className={cn(
               "flex-1 py-2 text-[10px] font-bold uppercase tracking-widest rounded transition-all",
@@ -63,7 +63,7 @@ export default function Auth({ onLogin }: AuthProps) {
           >
             Login
           </button>
-          <button 
+          <button
             onClick={() => setIsLogin(false)}
             className={cn(
               "flex-1 py-2 text-[10px] font-bold uppercase tracking-widest rounded transition-all",
@@ -83,11 +83,11 @@ export default function Auth({ onLogin }: AuthProps) {
               <label className="block text-[10px] font-bold text-on-surface-variant uppercase tracking-widest mb-2">Full Name</label>
               <div className="relative">
                 <User className="absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant" size={18} />
-                <input 
+                <input
                   type="text"
                   required={!isLogin}
                   value={formData.name}
-                  onChange={(e) => setFormData({...formData, name: e.target.value})}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   className="w-full bg-surface-container-low border-none rounded-xl py-4 pl-12 pr-4 text-sm focus:ring-2 focus:ring-primary/20 precise-transition"
                   placeholder="Julian Vance"
                 />
@@ -99,11 +99,11 @@ export default function Auth({ onLogin }: AuthProps) {
             <label className="block text-[10px] font-bold text-on-surface-variant uppercase tracking-widest mb-2">Email Address</label>
             <div className="relative">
               <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant" size={18} />
-              <input 
+              <input
                 type="email"
                 required
                 value={formData.email}
-                onChange={(e) => setFormData({...formData, email: e.target.value})}
+                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                 className="w-full bg-surface-container-low border-none rounded-xl py-4 pl-12 pr-4 text-sm focus:ring-2 focus:ring-primary/20 precise-transition"
                 placeholder="julian@vance.corp"
               />
@@ -114,18 +114,18 @@ export default function Auth({ onLogin }: AuthProps) {
             <label className="block text-[10px] font-bold text-on-surface-variant uppercase tracking-widest mb-2">Password</label>
             <div className="relative">
               <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant" size={18} />
-              <input 
+              <input
                 type="password"
                 required
                 value={formData.password}
-                onChange={(e) => setFormData({...formData, password: e.target.value})}
+                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                 className="w-full bg-surface-container-low border-none rounded-xl py-4 pl-12 pr-4 text-sm focus:ring-2 focus:ring-primary/20 precise-transition"
                 placeholder="••••••••"
               />
             </div>
           </div>
 
-          <button 
+          <button
             type="submit"
             disabled={isLoading}
             className="w-full bg-primary text-on-primary py-4 rounded-xl text-xs font-bold uppercase tracking-[0.2em] shadow-lg shadow-primary/20 hover:brightness-110 precise-transition flex items-center justify-center gap-3 disabled:opacity-70"
@@ -144,7 +144,7 @@ export default function Auth({ onLogin }: AuthProps) {
         <div className="mt-8 pt-8 border-t border-surface-container-low text-center">
           <p className="text-[10px] text-on-surface-variant uppercase tracking-widest">
             {isLogin ? "Don't have an account?" : "Already have an account?"}
-            <button 
+            <button
               onClick={() => setIsLogin(!isLogin)}
               className="ml-2 text-primary font-black hover:underline"
             >

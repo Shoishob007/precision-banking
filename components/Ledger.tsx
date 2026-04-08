@@ -1,16 +1,15 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
-import { 
-  Filter, 
-  ChevronLeft, 
-  ChevronRight, 
-  Calendar, 
-  ArrowDownLeft, 
-  ArrowUpRight, 
+import {
+  Filter,
+  ChevronLeft,
+  ChevronRight,
+  Calendar,
+  ArrowDownLeft,
+  ArrowUpRight,
   ArrowLeftRight,
-  Bolt,
-  Shield
+  Bolt
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Transaction } from '@/types';
@@ -34,8 +33,6 @@ const feedEvents = [
   { id: 1, type: 'balance:updated', message: 'System ledger synchronized. New balance: ', highlight: '$142,504.22', time: 'Just now', color: 'secondary' },
   { id: 2, type: 'transaction:created', message: 'Deposit initiated via SWIFT-MT103. Awaiting node verification.', time: '4m ago', color: 'primary' },
   { id: 3, type: 'transaction:failed', message: 'Withdrawal ID: TX-88295-B failed due to liquidity mismatch in sub-ledger.', time: '15m ago', color: 'error' },
-  { id: 4, type: 'security:login', message: 'New session established from IP: 192.168.1.1 (Stockholm, SE).', time: '1h ago', color: 'primary' },
-  { id: 5, type: 'system:audit', message: 'Daily checksum verification completed. 1,422 entries verified.', time: '2h ago', color: 'tertiary' },
 ];
 
 export default function Ledger() {
@@ -49,7 +46,7 @@ export default function Ledger() {
   }, [filterType]);
 
   const totalPages = Math.ceil(filteredTransactions.length / itemsPerPage);
-  
+
   const currentTransactions = useMemo(() => {
     const start = (currentPage - 1) * itemsPerPage;
     return filteredTransactions.slice(start, start + itemsPerPage);
@@ -62,14 +59,14 @@ export default function Ledger() {
   };
 
   return (
-    <div className="flex flex-1 overflow-hidden h-full">
+    <div className="flex flex-1 overflow-hidden h-full ">
       {/* Left Side: Table & Filters */}
-      <section className="flex-1 p-8 overflow-y-auto custom-scrollbar">
+      <section className="flex-1 p-8 lg:p-12 overflow-y-auto custom-scrollbar">
         {/* Filters Section */}
         <div className="bg-surface-container-low p-6 rounded-xl mb-8 flex flex-wrap gap-6 items-end">
           <div className="flex-1 min-w-[200px]">
             <label className="block text-[10px] font-bold text-on-surface-variant uppercase tracking-widest mb-2">Transaction Type</label>
-            <select 
+            <select
               value={filterType}
               onChange={(e) => {
                 setFilterType(e.target.value);
@@ -86,9 +83,9 @@ export default function Ledger() {
           <div className="flex-1 min-w-[200px]">
             <label className="block text-[10px] font-bold text-on-surface-variant uppercase tracking-widest mb-2">Date Range</label>
             <div className="relative">
-              <input 
-                className="w-full bg-surface-container-lowest border-none rounded-lg text-sm text-on-surface px-4 py-2.5 focus:ring-1 focus:ring-primary/20" 
-                placeholder="Jan 01, 2024 - Jan 31, 2024" 
+              <input
+                className="w-full bg-surface-container-lowest border-none rounded-lg text-sm text-on-surface px-4 py-2.5 focus:ring-1 focus:ring-primary/20"
+                placeholder="Jan 01, 2024 - Jan 31, 2024"
                 type="text"
               />
               <Calendar className="absolute right-3 top-2.5 text-slate-400" size={16} />
@@ -127,11 +124,11 @@ export default function Ledger() {
                     <div className="flex items-center gap-2">
                       <div className={cn(
                         "p-1 rounded",
-                        tx.type === 'deposit' ? "bg-blue-50 text-blue-600" : 
-                        tx.type === 'withdraw' ? "bg-amber-50 text-amber-600" : "bg-purple-50 text-purple-600"
+                        tx.type === 'deposit' ? "bg-blue-50 text-blue-600" :
+                          tx.type === 'withdraw' ? "bg-amber-50 text-amber-600" : "bg-purple-50 text-purple-600"
                       )}>
-                        {tx.type === 'deposit' ? <ArrowDownLeft size={14} /> : 
-                         tx.type === 'withdraw' ? <ArrowUpRight size={14} /> : <ArrowLeftRight size={14} />}
+                        {tx.type === 'deposit' ? <ArrowDownLeft size={14} /> :
+                          tx.type === 'withdraw' ? <ArrowUpRight size={14} /> : <ArrowLeftRight size={14} />}
                       </div>
                       <span className="px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-tighter">
                         {tx.type}
@@ -150,8 +147,8 @@ export default function Ledger() {
                     <div className="flex flex-col gap-1">
                       <span className={cn(
                         "text-[10px] font-bold uppercase px-2 py-0.5 rounded-full w-fit",
-                        tx.status === 'success' ? "bg-secondary-container text-on-secondary-container" : 
-                        tx.status === 'failed' ? "bg-error-container text-on-error-container" : "bg-tertiary-container/20 text-on-tertiary-container"
+                        tx.status === 'success' ? "bg-secondary-container text-on-secondary-container" :
+                          tx.status === 'failed' ? "bg-error-container text-on-error-container" : "bg-tertiary-container/20 text-on-tertiary-container"
                       )}>
                         {tx.status}
                       </span>
@@ -175,22 +172,22 @@ export default function Ledger() {
             Displaying {(currentPage - 1) * itemsPerPage + 1}-{Math.min(currentPage * itemsPerPage, filteredTransactions.length)} of {filteredTransactions.length} results
           </span>
           <div className="flex gap-2">
-            <button 
+            <button
               onClick={() => handlePageChange(currentPage - 1)}
               disabled={currentPage === 1}
               className="h-8 w-8 flex items-center justify-center rounded bg-surface-container-lowest text-on-surface-variant hover:text-primary transition-colors disabled:opacity-30"
             >
               <ChevronLeft size={16} />
             </button>
-            
+
             {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
-              <button 
+              <button
                 key={page}
                 onClick={() => handlePageChange(page)}
                 className={cn(
                   "h-8 w-8 flex items-center justify-center rounded font-bold text-xs transition-all",
-                  currentPage === page 
-                    ? "bg-primary text-on-primary" 
+                  currentPage === page
+                    ? "bg-primary text-on-primary"
                     : "bg-surface-container-lowest text-on-surface-variant hover:text-primary"
                 )}
               >
@@ -198,7 +195,7 @@ export default function Ledger() {
               </button>
             ))}
 
-            <button 
+            <button
               onClick={() => handlePageChange(currentPage + 1)}
               disabled={currentPage === totalPages}
               className="h-8 w-8 flex items-center justify-center rounded bg-surface-container-lowest text-on-surface-variant hover:text-primary transition-colors disabled:opacity-30"
@@ -218,22 +215,22 @@ export default function Ledger() {
 
         <div className="flex-1 overflow-y-auto custom-scrollbar space-y-4">
           {feedEvents.map((event) => (
-            <div 
+            <div
               key={event.id}
               className="bg-surface-container-lowest p-4 rounded-lg shadow-[0px_2px_10px_rgba(42,52,57,0.04)] relative overflow-hidden group"
             >
               <div className={cn(
                 "absolute top-0 left-0 h-full w-1",
-                event.color === 'secondary' ? "bg-secondary" : 
-                event.color === 'primary' ? "bg-primary" : 
-                event.color === 'error' ? "bg-error" : "bg-tertiary"
+                event.color === 'secondary' ? "bg-secondary" :
+                  event.color === 'primary' ? "bg-primary" :
+                    event.color === 'error' ? "bg-error" : "bg-tertiary"
               )}></div>
               <div className="flex justify-between items-start mb-2">
                 <span className={cn(
                   "text-[9px] font-bold uppercase tracking-tighter",
-                  event.color === 'secondary' ? "text-secondary" : 
-                  event.color === 'primary' ? "text-primary" : 
-                  event.color === 'error' ? "text-error" : "text-tertiary"
+                  event.color === 'secondary' ? "text-secondary" :
+                    event.color === 'primary' ? "text-primary" :
+                      event.color === 'error' ? "text-error" : "text-tertiary"
                 )}>{event.type}</span>
                 <span className="text-[9px] text-on-surface-variant">{event.time}</span>
               </div>
@@ -244,28 +241,9 @@ export default function Ledger() {
           ))}
         </div>
 
-        <div className="mt-6 space-y-4">
-          <button className="w-full py-2.5 bg-surface-container-high text-[10px] font-bold uppercase tracking-widest text-on-surface-variant rounded-lg hover:bg-surface-container-highest transition-colors">
-            Clear Feed
-          </button>
-          
-          <div className="p-6 bg-gradient-to-br from-primary to-primary-container rounded-2xl relative overflow-hidden group">
-            <div className="absolute -right-4 -bottom-4 opacity-10 group-hover:scale-110 transition-transform duration-500">
-              <Shield size={96} />
-            </div>
-            <h3 className="text-white font-bold text-lg mb-1 z-10 relative">Wealth Protection</h3>
-            <p className="text-on-primary-container text-xs mb-4 z-10 relative">Your account is currently under 24/7 elite surveillance monitoring.</p>
-            <button className="bg-white/10 hover:bg-white/20 text-white text-[10px] font-bold uppercase tracking-widest px-4 py-2 rounded-full backdrop-blur-md transition-colors z-10 relative">
-              Security Audit
-            </button>
-          </div>
+        <div className="mt-6">
         </div>
       </aside>
-
-      {/* Floating Technical Info */}
-      <div className="fixed bottom-6 right-8 bg-on-surface text-surface text-[9px] px-3 py-1.5 rounded uppercase tracking-[0.2em] font-black z-50 hidden lg:block">
-        System Instance: PR-ED-8849-V1.0.4
-      </div>
     </div>
   );
 }

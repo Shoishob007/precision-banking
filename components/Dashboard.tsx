@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { motion } from 'motion/react';
-import { TrendingUp, TrendingDown, ArrowRight, Lock, ShieldCheck } from 'lucide-react';
+import { TrendingUp, TrendingDown, ArrowRight, Lock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Account, ActivityEvent } from '@/types';
 
@@ -48,7 +48,7 @@ const recentEvents: ActivityEvent[] = [
 
 export default function Dashboard() {
   return (
-    <div className="p-8 lg:p-12 max-w-7xl mx-auto w-full space-y-12">
+    <div className="p-8 lg:p-12 w-full space-y-12">
       {/* Header Section */}
       <div className="flex flex-col items-start max-w-4xl">
         <span className="text-on-surface-variant font-sans text-[10px] uppercase tracking-[0.2em] mb-2">Technical Overview</span>
@@ -61,7 +61,7 @@ export default function Dashboard() {
       {/* Account Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
         {accounts.map((account) => (
-          <motion.div 
+          <motion.div
             key={account.id}
             whileHover={{ y: -4 }}
             transition={{ duration: 0.2, ease: [0.2, 0, 0, 1] }}
@@ -122,15 +122,14 @@ export default function Dashboard() {
       </div>
 
       {/* Activity Layer */}
-      <div className="flex flex-col lg:flex-row gap-12">
-        <div className="flex-1">
+      <div>
+        <div>
           <div className="flex items-center justify-between mb-6">
             <h4 className="text-xs font-bold uppercase tracking-widest text-on-surface-variant">Recent Ledger Ingress</h4>
-            <button className="text-[10px] font-bold text-secondary uppercase tracking-tighter hover:underline">Export XML</button>
           </div>
           <div className="bg-surface-container-low rounded-lg p-1">
             {recentEvents.map((event) => (
-              <motion.div 
+              <motion.div
                 key={event.id}
                 whileHover={{ x: 4 }}
                 className="bg-surface-container-lowest p-4 rounded mb-1 flex items-center justify-between transition-colors last:mb-0 cursor-pointer hover:bg-surface-container-low"
@@ -147,53 +146,6 @@ export default function Dashboard() {
               </motion.div>
             ))}
           </div>
-        </div>
-
-        <div className="w-full lg:w-80 bg-surface-container-high rounded-xl p-8 relative overflow-hidden">
-          <div className="relative z-10">
-            <h4 className="text-xs font-bold uppercase tracking-widest text-on-surface-variant mb-6">System Health</h4>
-            <div className="space-y-6">
-              <div>
-                <div className="flex justify-between mb-2">
-                  <span className="text-[10px] font-medium text-primary">IOPS Load</span>
-                  <span className="text-[10px] font-bold">14%</span>
-                </div>
-                <div className="h-1 bg-white/30 rounded-full overflow-hidden">
-                  <motion.div 
-                    initial={{ width: 0 }}
-                    animate={{ width: '14%' }}
-                    transition={{ duration: 1, ease: "easeOut" }}
-                    className="h-full bg-secondary"
-                  ></motion.div>
-                </div>
-              </div>
-              <div>
-                <div className="flex justify-between mb-2">
-                  <span className="text-[10px] font-medium text-primary">Sync Latency</span>
-                  <span className="text-[10px] font-bold">12ms</span>
-                </div>
-                <div className="h-1 bg-white/30 rounded-full overflow-hidden">
-                  <motion.div 
-                    initial={{ width: 0 }}
-                    animate={{ width: '4%' }}
-                    transition={{ duration: 1, ease: "easeOut", delay: 0.2 }}
-                    className="h-full bg-secondary"
-                  ></motion.div>
-                </div>
-              </div>
-            </div>
-            <div className="mt-12 bg-white/50 backdrop-blur-md p-4 rounded-lg">
-              <div className="flex items-center gap-2 mb-1">
-                <ShieldCheck size={14} className="text-on-surface" />
-                <span className="text-[10px] font-bold text-on-surface">Precision Protocol v2.1</span>
-              </div>
-              <p className="text-[10px] font-sans text-on-surface-variant leading-relaxed">
-                Connected via US-EAST-1 node. Optimistic locking active on all ledgers.
-              </p>
-            </div>
-          </div>
-          {/* Decorative architectural element */}
-          <div className="absolute -bottom-20 -right-20 w-64 h-64 border border-white/20 rounded-full"></div>
         </div>
       </div>
     </div>
