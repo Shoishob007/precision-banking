@@ -6,14 +6,14 @@ import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
 
 export default function AuthPage() {
-  const { user, login } = useAuth();
+  const { user, isAuthLoading } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
-    if (user) {
+    if (!isAuthLoading && user) {
       router.replace('/dashboard');
     }
-  }, [user, router]);
+  }, [isAuthLoading, user, router]);
 
-  return <Auth onLogin={login} />;
+  return <Auth />;
 }

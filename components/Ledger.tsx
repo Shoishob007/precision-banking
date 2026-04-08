@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Filter,
   ChevronLeft,
@@ -12,45 +12,78 @@ import {
   Bolt
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { Transaction } from '@/types';
+import { ActivityEvent, Transaction } from '@/types';
+import { useAuth } from '@/context/AuthContext';
+import { apiRequest } from '@/lib/api';
 
 import Link from 'next/link';
 
-const allTransactions: Transaction[] = [
-  { id: 'TX-88294-A', type: 'deposit', amount: 12450.00, status: 'success', timestamp: 'Oct 24, 2023 · 14:22:10', version: 'v1.2' },
-  { id: 'TX-88295-B', type: 'withdraw', amount: -2000.00, status: 'failed', timestamp: 'Oct 24, 2023 · 15:45:02', version: 'v1.2', description: 'Insufficient balance' },
-  { id: 'TX-88296-C', type: 'transfer', amount: -540.25, status: 'success', timestamp: 'Oct 25, 2023 · 09:12:33', version: 'v1.2' },
-  { id: 'TX-88297-D', type: 'deposit', amount: 1200.00, status: 'success', timestamp: 'Oct 25, 2023 · 11:30:00', version: 'v1.2' },
-  { id: 'TX-88298-E', type: 'deposit', amount: 4500.00, status: 'success', timestamp: 'Oct 26, 2023 · 10:00:00', version: 'v1.2' },
-  { id: 'TX-88299-F', type: 'withdraw', amount: -150.00, status: 'success', timestamp: 'Oct 26, 2023 · 14:15:00', version: 'v1.2' },
-  { id: 'TX-88300-G', type: 'transfer', amount: -1200.00, status: 'success', timestamp: 'Oct 27, 2023 · 08:45:00', version: 'v1.2' },
-  { id: 'TX-88301-H', type: 'deposit', amount: 8900.00, status: 'success', timestamp: 'Oct 27, 2023 · 16:20:00', version: 'v1.2' },
-  { id: 'TX-88302-I', type: 'withdraw', amount: -500.00, status: 'success', timestamp: 'Oct 28, 2023 · 09:10:00', version: 'v1.2' },
-  { id: 'TX-88303-J', type: 'deposit', amount: 250.00, status: 'success', timestamp: 'Oct 28, 2023 · 11:55:00', version: 'v1.2' },
-];
+interface TransactionsResponse {
+  items: Transaction[];
+  total: number;
+  page: number;
+  limit: number;
+}
 
-const feedEvents = [
-  { id: 1, type: 'balance:updated', message: 'System ledger synchronized. New balance: ', highlight: '$142,504.22', time: 'Just now', color: 'secondary' },
-  { id: 2, type: 'transaction:created', message: 'Deposit initiated via SWIFT-MT103. Awaiting node verification.', time: '4m ago', color: 'primary' },
-  { id: 3, type: 'transaction:failed', message: 'Withdrawal ID: TX-88295-B failed due to liquidity mismatch in sub-ledger.', time: '15m ago', color: 'error' },
-];
+interface ActivityResponse {
+  activity: ActivityEvent[];
+}
+
+function formatTimestamp(timestamp: string) {
+  return new Date(timestamp).toLocaleString();
+}
+
+function activityColor(event: ActivityEvent) {
+  if (event.status === 'error') {
+    return 'error';
+  }
+
+  if (event.type === 'balance:updated') {
+    return 'secondary';
+  }
+
+  return 'primary';
+}
 
 export default function Ledger() {
+  const { token } = useAuth();
   const [currentPage, setCurrentPage] = useState(1);
   const [filterType, setFilterType] = useState('All Transactions');
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [feedEvents, setFeedEvents] = useState<ActivityEvent[]>([]);
+  const [totalCount, setTotalCount] = useState(0);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const itemsPerPage = 4;
 
-  const filteredTransactions = useMemo(() => {
-    if (filterType === 'All Transactions') return allTransactions;
-    return allTransactions.filter(tx => tx.type.toLowerCase() === filterType.toLowerCase());
-  }, [filterType]);
+  useEffect(() => {
+    if (!token) {
+      return;
+    }
 
-  const totalPages = Math.ceil(filteredTransactions.length / itemsPerPage);
+    setIsLoading(true);
+    setError(null);
 
-  const currentTransactions = useMemo(() => {
-    const start = (currentPage - 1) * itemsPerPage;
-    return filteredTransactions.slice(start, start + itemsPerPage);
-  }, [filteredTransactions, currentPage]);
+    const typeQuery = filterType === 'All Transactions' ? '' : `&type=${filterType.toLowerCase()}`;
+
+    Promise.all([
+      apiRequest<TransactionsResponse>(`/api/transactions?page=${currentPage}&limit=${itemsPerPage}${typeQuery}`, {}, token),
+      apiRequest<ActivityResponse>('/api/dashboard/activity-feed?limit=10', {}, token)
+    ])
+      .then(([transactionData, activityData]) => {
+        setTransactions(transactionData.items);
+        setTotalCount(transactionData.total);
+        setFeedEvents(activityData.activity);
+      })
+      .catch((requestError: Error) => {
+        setError(requestError.message);
+      })
+      .finally(() => {
+        setIsLoading(false);
+      });
+  }, [currentPage, filterType, itemsPerPage, token]);
+
+  const totalPages = useMemo(() => Math.max(1, Math.ceil(totalCount / itemsPerPage)), [totalCount, itemsPerPage]);
 
   const handlePageChange = (page: number) => {
     if (page >= 1 && page <= totalPages) {
@@ -62,6 +95,12 @@ export default function Ledger() {
     <div className="flex flex-1 overflow-hidden h-full ">
       {/* Left Side: Table & Filters */}
       <section className="flex-1 p-8 lg:p-12 overflow-y-auto custom-scrollbar">
+        {error && (
+          <div className="mb-6 rounded-xl border border-error/20 bg-error-container/10 px-4 py-3 text-sm text-error">
+            {error}
+          </div>
+        )}
+
         {/* Filters Section */}
         <div className="bg-surface-container-low p-6 rounded-xl mb-8 flex flex-wrap gap-6 items-end">
           <div className="flex-1 min-w-[200px]">
@@ -110,13 +149,27 @@ export default function Ledger() {
               </tr>
             </thead>
             <tbody className="divide-y divide-surface-container-low">
-              {currentTransactions.map((tx) => (
+              {isLoading && transactions.length === 0 && (
+                <tr>
+                  <td colSpan={5} className="px-6 py-8 text-center text-sm text-on-surface-variant">
+                    Loading transactions...
+                  </td>
+                </tr>
+              )}
+              {!isLoading && transactions.length === 0 && (
+                <tr>
+                  <td colSpan={5} className="px-6 py-8 text-center text-sm text-on-surface-variant">
+                    No transactions found for this user.
+                  </td>
+                </tr>
+              )}
+              {transactions.map((tx) => (
                 <tr key={tx.id} className="hover:bg-surface-bright transition-colors group cursor-pointer">
                   <td className="px-6 py-5">
-                    <Link href={`/transactions/${tx.id}`} className="flex items-center gap-2">
-                      <span className="text-xs font-mono font-medium text-on-surface hover:text-primary transition-colors underline decoration-primary/30 underline-offset-4">{tx.id}</span>
+                    <Link href={`/transactions/${tx.transactionRef}`} className="flex items-center gap-2">
+                      <span className="text-xs font-mono font-medium text-on-surface hover:text-primary transition-colors underline decoration-primary/30 underline-offset-4">{tx.transactionRef}</span>
                       <span className="bg-surface-variant text-[9px] px-1.5 py-0.5 rounded text-on-surface-variant group-hover:bg-primary-container group-hover:text-primary transition-colors">
-                        {tx.version}
+                        {tx.metadata?.newVersion ? `v${String(tx.metadata.newVersion)}` : tx.status.toUpperCase()}
                       </span>
                     </Link>
                   </td>
@@ -138,9 +191,9 @@ export default function Ledger() {
                   <td className="px-6 py-5 text-right">
                     <span className={cn(
                       "text-sm font-bold tracking-tight",
-                      tx.amount > 0 ? "text-secondary" : "text-on-surface"
+                      tx.type === 'deposit' ? "text-secondary" : "text-on-surface"
                     )}>
-                      {tx.amount > 0 ? '+' : ''}${Math.abs(tx.amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                      {tx.type === 'deposit' ? '+' : '-'}${Math.abs(tx.amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}
                     </span>
                   </td>
                   <td className="px-6 py-5">
@@ -152,13 +205,13 @@ export default function Ledger() {
                       )}>
                         {tx.status}
                       </span>
-                      {tx.description && (
-                        <span className="text-[10px] text-error font-medium italic">{tx.description}</span>
+                      {tx.failureReason && (
+                        <span className="text-[10px] text-error font-medium italic">{tx.failureReason}</span>
                       )}
                     </div>
                   </td>
                   <td className="px-6 py-5">
-                    <span className="text-xs text-on-surface-variant">{tx.timestamp}</span>
+                    <span className="text-xs text-on-surface-variant">{formatTimestamp(tx.createdAt)}</span>
                   </td>
                 </tr>
               ))}
@@ -169,7 +222,7 @@ export default function Ledger() {
         {/* Pagination */}
         <div className="mt-8 flex justify-between items-center bg-surface-container-low px-6 py-4 rounded-xl">
           <span className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">
-            Displaying {(currentPage - 1) * itemsPerPage + 1}-{Math.min(currentPage * itemsPerPage, filteredTransactions.length)} of {filteredTransactions.length} results
+            Displaying {transactions.length === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1}-{Math.min(currentPage * itemsPerPage, totalCount)} of {totalCount} results
           </span>
           <div className="flex gap-2">
             <button
@@ -214,6 +267,11 @@ export default function Ledger() {
         </div>
 
         <div className="flex-1 overflow-y-auto custom-scrollbar space-y-4">
+          {!isLoading && feedEvents.length === 0 && (
+            <div className="bg-surface-container-lowest p-4 rounded-lg text-sm text-on-surface-variant">
+              No activity yet for this user.
+            </div>
+          )}
           {feedEvents.map((event) => (
             <div
               key={event.id}
@@ -221,21 +279,19 @@ export default function Ledger() {
             >
               <div className={cn(
                 "absolute top-0 left-0 h-full w-1",
-                event.color === 'secondary' ? "bg-secondary" :
-                  event.color === 'primary' ? "bg-primary" :
-                    event.color === 'error' ? "bg-error" : "bg-tertiary"
+                activityColor(event) === 'secondary' ? "bg-secondary" :
+                  activityColor(event) === 'primary' ? "bg-primary" : "bg-error"
               )}></div>
               <div className="flex justify-between items-start mb-2">
                 <span className={cn(
                   "text-[9px] font-bold uppercase tracking-tighter",
-                  event.color === 'secondary' ? "text-secondary" :
-                    event.color === 'primary' ? "text-primary" :
-                      event.color === 'error' ? "text-error" : "text-tertiary"
+                  activityColor(event) === 'secondary' ? "text-secondary" :
+                    activityColor(event) === 'primary' ? "text-primary" : "text-error"
                 )}>{event.type}</span>
-                <span className="text-[9px] text-on-surface-variant">{event.time}</span>
+                <span className="text-[9px] text-on-surface-variant">{formatTimestamp(event.timestamp)}</span>
               </div>
               <p className="text-xs text-on-surface leading-relaxed">
-                {event.message} {event.highlight && <span className={cn("font-bold", event.color === 'secondary' ? "text-secondary" : "text-on-surface")}>{event.highlight}</span>}
+                {event.message} {event.metadata && <span className={cn("font-bold", activityColor(event) === 'secondary' ? "text-secondary" : "text-on-surface")}>{event.metadata}</span>}
               </p>
             </div>
           ))}

@@ -5,17 +5,21 @@ import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 
 export default function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { user } = useAuth();
+  const { user, isAuthLoading } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
-    if (!user) {
+    if (!isAuthLoading && !user) {
       router.replace('/');
     }
-  }, [user, router]);
+  }, [isAuthLoading, user, router]);
+
+  if (isAuthLoading) {
+    return null;
+  }
 
   if (!user) {
-    return null; // Or a loading spinner
+    return null;
   }
 
   return <>{children}</>;

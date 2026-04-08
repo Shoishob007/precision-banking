@@ -4,14 +4,14 @@ import React, { useState } from 'react';
 import { motion } from 'motion/react';
 import { Shield, Lock, Mail, User, ArrowRight, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/context/AuthContext';
+import { ApiError } from '@/lib/api';
 
-interface AuthProps {
-  onLogin: (user: { name: string; email: string }) => void;
-}
-
-export default function Auth({ onLogin }: AuthProps) {
+export default function Auth() {
+  const { login, register } = useAuth();
   const [isLogin, setIsLogin] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -20,16 +20,25 @@ export default function Auth({ onLogin }: AuthProps) {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    setError(null);
     setIsLoading(true);
 
-    // Simulate API call
-    setTimeout(() => {
-      setIsLoading(false);
-      onLogin({
-        name: formData.name || 'Julian Vance',
-        email: formData.email || 'julian@vance.corp'
+    const action = isLogin
+      ? login({ email: formData.email, password: formData.password })
+      : register({ name: formData.name, email: formData.email, password: formData.password });
+
+    action
+      .catch((requestError: unknown) => {
+        if (requestError instanceof ApiError) {
+          setError(requestError.message);
+          return;
+        }
+
+        setError('Unable to authenticate right now.');
+      })
+      .finally(() => {
+        setIsLoading(false);
       });
-    }, 1500);
   };
 
   return (
@@ -139,6 +148,12 @@ export default function Auth({ onLogin }: AuthProps) {
               </>
             )}
           </button>
+
+          {error && (
+            <div className="rounded-xl border border-error/20 bg-error-container/10 px-4 py-3 text-xs font-medium text-error">
+              {error}
+            </div>
+          )}
         </form>
 
         <div className="mt-8 pt-8 border-t border-surface-container-low text-center">

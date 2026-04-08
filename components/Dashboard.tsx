@@ -1,52 +1,50 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion } from 'motion/react';
 import { TrendingUp, TrendingDown, ArrowRight, Lock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Account, ActivityEvent } from '@/types';
+import { useAuth } from '@/context/AuthContext';
+import { apiRequest } from '@/lib/api';
 
-const accounts: Account[] = [
-  {
-    id: 'ACC1001',
-    name: 'Private Reserve',
-    type: 'Wealth Management',
-    balance: 1248092.45,
-    change: 0.4,
-    changeType: 'up',
-    status: 'active',
-    version: 'v1.4.2',
-    holder: 'Julian Vance'
-  },
-  {
-    id: 'ACC1002',
-    name: 'Daily Operations',
-    type: 'Personal Checking',
-    balance: 452110.00,
-    change: 2.1,
-    changeType: 'down',
-    status: 'standard',
-    version: 'v1.1.0',
-    holder: 'Vance Corp Operating'
-  },
-  {
-    id: 'ACC1003',
-    name: 'Escrow Reserve',
-    type: 'Global Securities',
-    balance: 0.00,
-    status: 'locked',
-    version: 'LOCKED',
-    holder: 'Escrow Reserve'
-  }
-];
+interface DashboardSummaryResponse {
+  accounts: Account[];
+  activity: ActivityEvent[];
+}
 
-const recentEvents: ActivityEvent[] = [
-  { id: 'TXN_99204_A', type: 'Inbound Wire', message: 'Central Bank', timestamp: 'Just now', status: 'success', metadata: '+$42,000.00' },
-  { id: 'TXN_99203_B', type: 'Dividend Distribution', message: 'Vanguard Dividend', timestamp: '14m ago', status: 'success', metadata: '+$2,400.00' },
-  { id: 'TXN_99202_C', type: 'Cloud Infrastructure', message: 'Compute Services', timestamp: '2h ago', status: 'error', metadata: '-$890.12' }
-];
+function formatTimestamp(timestamp: string) {
+  return new Date(timestamp).toLocaleString();
+}
 
 export default function Dashboard() {
+  const { token } = useAuth();
+  const [accounts, setAccounts] = useState<Account[]>([]);
+  const [recentEvents, setRecentEvents] = useState<ActivityEvent[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!token) {
+      return;
+    }
+
+    setIsLoading(true);
+    setError(null);
+
+    apiRequest<DashboardSummaryResponse>('/api/dashboard/summary', {}, token)
+      .then((data) => {
+        setAccounts(data.accounts);
+        setRecentEvents(data.activity);
+      })
+      .catch((requestError: Error) => {
+        setError(requestError.message);
+      })
+      .finally(() => {
+        setIsLoading(false);
+      });
+  }, [token]);
+
   return (
     <div className="p-8 lg:p-12 w-full space-y-12">
       {/* Header Section */}
@@ -58,8 +56,19 @@ export default function Dashboard() {
         </p>
       </div>
 
+      {error && (
+        <div className="rounded-xl border border-error/20 bg-error-container/10 px-4 py-3 text-sm text-error">
+          {error}
+        </div>
+      )}
+
       {/* Account Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        {isLoading && accounts.length === 0 && (
+          <div className="col-span-full rounded-xl bg-surface-container-low px-6 py-5 text-sm text-on-surface-variant">
+            Loading accounts...
+          </div>
+        )}
         {accounts.map((account) => (
           <motion.div
             key={account.id}
@@ -73,7 +82,7 @@ export default function Dashboard() {
             <div className="flex justify-between items-start mb-10">
               <div>
                 <p className="text-[10px] font-sans text-on-surface-variant uppercase tracking-widest mb-1">Account ID</p>
-                <p className="text-sm font-sans font-bold text-primary">{account.id}</p>
+                <p className="text-sm font-sans font-bold text-primary">{account.accountId}</p>
               </div>
               <div className={cn(
                 "px-2 py-0.5 rounded-sm",
@@ -83,7 +92,7 @@ export default function Dashboard() {
                   "text-[9px] font-mono",
                   account.status === 'locked' ? "text-on-tertiary-container font-bold" : "text-on-surface-variant"
                 )}>
-                  {account.version}
+                  {account.versionLabel}
                 </span>
               </div>
             </div>
@@ -112,7 +121,7 @@ export default function Dashboard() {
             </div>
 
             <div className="flex items-center justify-between border-t border-surface-container-low pt-4 mt-auto">
-              <span className="text-[11px] font-medium text-on-surface-variant">{account.holder}</span>
+              <span className="text-[11px] font-medium text-on-surface-variant">{account.holderName}</span>
               <button className="text-primary hover:text-secondary-dim transition-colors">
                 {account.status === 'locked' ? <Lock size={18} /> : <ArrowRight size={18} />}
               </button>
@@ -128,6 +137,11 @@ export default function Dashboard() {
             <h4 className="text-xs font-bold uppercase tracking-widest text-on-surface-variant">Recent Ledger Ingress</h4>
           </div>
           <div className="bg-surface-container-low rounded-lg p-1">
+            {!isLoading && recentEvents.length === 0 && (
+              <div className="bg-surface-container-lowest p-4 rounded text-sm text-on-surface-variant">
+                No activity yet for this user.
+              </div>
+            )}
             {recentEvents.map((event) => (
               <motion.div
                 key={event.id}
@@ -142,7 +156,7 @@ export default function Dashboard() {
                   <span className="font-mono text-[11px] text-primary">{event.id}</span>
                   <span className="text-xs font-medium">{event.type} - {event.message}</span>
                 </div>
-                <span className="text-xs font-bold text-on-surface">{event.metadata}</span>
+                <span className="text-xs font-bold text-on-surface">{event.metadata ?? formatTimestamp(event.timestamp)}</span>
               </motion.div>
             ))}
           </div>
