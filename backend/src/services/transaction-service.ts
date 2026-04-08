@@ -653,6 +653,8 @@ export async function listTransactionsForUser(
     limit: number;
     type?: TransactionType;
     accountId?: string;
+    fromDate?: string;
+    toDate?: string;
   },
 ) {
   const params: Array<string | number> = [userId];
@@ -668,6 +670,16 @@ export async function listTransactionsForUser(
     filters.push(
       `(a.account_id = $${params.length} OR src.account_id = $${params.length} OR dest.account_id = $${params.length})`,
     );
+  }
+
+  if (options.fromDate) {
+    params.push(options.fromDate);
+    filters.push(`t.created_at::date >= $${params.length}::date`);
+  }
+
+  if (options.toDate) {
+    params.push(options.toDate);
+    filters.push(`t.created_at::date <= $${params.length}::date`);
   }
 
   params.push(options.limit);

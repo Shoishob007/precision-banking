@@ -23,12 +23,16 @@ export function createTransactionRouter(realtime: RealtimePublisher) {
         | "transfer"
         | undefined;
       const accountId = request.query.accountId as string | undefined;
+      const fromDate = request.query.fromDate as string | undefined;
+      const toDate = request.query.toDate as string | undefined;
 
       const transactions = await listTransactionsForUser(request.auth!.userId, {
         page,
         limit,
         type,
         accountId,
+        fromDate,
+        toDate,
       });
 
       response.json(transactions);

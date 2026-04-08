@@ -2,10 +2,8 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import {
-  Filter,
   ChevronLeft,
   ChevronRight,
-  Calendar,
   ArrowDownLeft,
   ArrowUpRight,
   ArrowLeftRight,
@@ -49,6 +47,8 @@ export default function Ledger() {
   const { token } = useAuth();
   const [currentPage, setCurrentPage] = useState(1);
   const [filterType, setFilterType] = useState('All Transactions');
+  const [fromDate, setFromDate] = useState('');
+  const [toDate, setToDate] = useState('');
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [feedEvents, setFeedEvents] = useState<ActivityEvent[]>([]);
   const [totalCount, setTotalCount] = useState(0);
@@ -65,9 +65,11 @@ export default function Ledger() {
     setError(null);
 
     const typeQuery = filterType === 'All Transactions' ? '' : `&type=${filterType.toLowerCase()}`;
+    const fromDateQuery = fromDate ? `&fromDate=${fromDate}` : '';
+    const toDateQuery = toDate ? `&toDate=${toDate}` : '';
 
     Promise.all([
-      apiRequest<TransactionsResponse>(`/api/transactions?page=${currentPage}&limit=${itemsPerPage}${typeQuery}`, {}, token),
+      apiRequest<TransactionsResponse>(`/api/transactions?page=${currentPage}&limit=${itemsPerPage}${typeQuery}${fromDateQuery}${toDateQuery}`, {}, token),
       apiRequest<ActivityResponse>('/api/dashboard/activity-feed?limit=10', {}, token)
     ])
       .then(([transactionData, activityData]) => {
@@ -81,7 +83,7 @@ export default function Ledger() {
       .finally(() => {
         setIsLoading(false);
       });
-  }, [currentPage, filterType, itemsPerPage, token]);
+  }, [currentPage, filterType, fromDate, toDate, itemsPerPage, token]);
 
   const totalPages = useMemo(() => Math.max(1, Math.ceil(totalCount / itemsPerPage)), [totalCount, itemsPerPage]);
 
@@ -121,19 +123,27 @@ export default function Ledger() {
           </div>
           <div className="flex-1 min-w-[200px]">
             <label className="block text-[10px] font-bold text-on-surface-variant uppercase tracking-widest mb-2">Date Range</label>
-            <div className="relative">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <input
+                type="date"
+                value={fromDate}
+                onChange={(e) => {
+                  setCurrentPage(1);
+                  setFromDate(e.target.value);
+                }}
                 className="w-full bg-surface-container-lowest border-none rounded-lg text-sm text-on-surface px-4 py-2.5 focus:ring-1 focus:ring-primary/20"
-                placeholder="Jan 01, 2024 - Jan 31, 2024"
-                type="text"
               />
-              <Calendar className="absolute right-3 top-2.5 text-slate-400" size={16} />
+              <input
+                type="date"
+                value={toDate}
+                onChange={(e) => {
+                  setCurrentPage(1);
+                  setToDate(e.target.value);
+                }}
+                className="w-full bg-surface-container-lowest border-none rounded-lg text-sm text-on-surface px-4 py-2.5 focus:ring-1 focus:ring-primary/20"
+              />
             </div>
           </div>
-          <button className="bg-primary text-on-primary px-6 py-2.5 rounded-lg text-xs font-bold uppercase tracking-widest hover:bg-primary-dim transition-colors shadow-sm flex items-center gap-2">
-            <Filter size={14} />
-            Apply Filters
-          </button>
         </div>
 
         {/* Table Card */}

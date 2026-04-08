@@ -29,8 +29,11 @@ function parseAmount(value: string) {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
+type TransactionAction = 'deposit' | 'withdraw' | 'transfer';
+
 export default function Transactions() {
   const { token } = useAuth();
+  const [activeAction, setActiveAction] = useState<TransactionAction>('deposit');
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [selectedDepositAccount, setSelectedDepositAccount] = useState('');
   const [selectedWithdrawAccount, setSelectedWithdrawAccount] = useState('');
@@ -85,6 +88,23 @@ export default function Transactions() {
   const transferSourceAccount = useMemo(
     () => accounts.find((account) => account.accountId === selectedTransferFromAccount) ?? null,
     [accounts, selectedTransferFromAccount]
+  );
+
+  const selectedActionAccount = useMemo(() => {
+    if (activeAction === 'deposit') {
+      return depositAccount;
+    }
+
+    if (activeAction === 'withdraw') {
+      return withdrawAccount;
+    }
+
+    return transferSourceAccount;
+  }, [activeAction, depositAccount, withdrawAccount, transferSourceAccount]);
+
+  const totalPortfolioBalance = useMemo(
+    () => accounts.reduce((sum, account) => sum + account.balance, 0),
+    [accounts]
   );
 
   async function refreshAccounts() {
@@ -201,188 +221,265 @@ export default function Transactions() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Deposit Section */}
-        <section className="space-y-6">
-          <motion.div
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            className="bg-surface-container-lowest rounded-xl p-6 shadow-[0px_20px_40px_rgba(42,52,57,0.02)]"
-          >
-            <div className="flex justify-between items-start mb-6">
-              <h2 className="text-sm font-bold tracking-tight text-on-surface uppercase">Deposit</h2>
-              <span className="text-[10px] font-medium bg-surface-variant px-1.5 py-0.5 rounded-sm text-on-surface-variant">live</span>
-            </div>
-            <form className="space-y-4" onSubmit={handleDepositSubmit}>
-              <div>
-                <label className="block text-[10px] font-medium uppercase tracking-widest text-on-surface-variant mb-1">Account Selector</label>
-                <select value={selectedDepositAccount} onChange={(e) => setSelectedDepositAccount(e.target.value)} className="w-full bg-surface-container-high border-none rounded-lg text-sm focus:ring-1 focus:ring-outline-variant focus:bg-surface-container-lowest precise-transition py-3">
-                  {accounts.map((account) => (
-                    <option key={account.id} value={account.accountId}>{account.name} • {account.accountId}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-[10px] font-medium uppercase tracking-widest text-on-surface-variant mb-1">Amount Input</label>
-                <div className="relative">
-                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant text-sm">$</span>
-                  <input
-                    className="w-full bg-surface-container-high border-none rounded-lg text-sm pl-8 pr-4 py-3 focus:ring-1 focus:ring-outline-variant focus:bg-surface-container-lowest precise-transition"
-                    placeholder="0.00"
-                    type="number"
-                    value={depositAmount}
-                    onChange={(e) => setDepositAmount(e.target.value)}
-                  />
-                </div>
-              </div>
-              <div className="bg-surface-container-low p-4 rounded-lg">
-                <p className="text-[10px] uppercase tracking-widest text-on-surface-variant mb-1">Real-time Balance Preview</p>
-                <p className="text-xl font-bold tracking-tighter text-on-surface">
-                  ${(depositAccount?.balance ?? 0).toLocaleString('en-US', { minimumFractionDigits: 2 })} <span className="text-secondary text-xs ml-1">+ ${parseAmount(depositAmount).toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
-                </p>
-              </div>
-              <button type="submit" disabled={isDepositProcessing || !selectedDepositAccount} className="w-full bg-gradient-to-br from-primary to-primary-dim text-on-primary py-3 rounded-lg text-xs font-bold uppercase tracking-widest shadow-lg shadow-primary/10 hover:brightness-110 transition-all flex items-center justify-center gap-2 disabled:opacity-60">
-                {isDepositProcessing ? <Loader2 className="animate-spin" size={16} /> : 'Execute Deposit'}
-              </button>
-            </form>
-          </motion.div>
-        </section>
+      <div className="mb-8 rounded-xl bg-surface-container-low p-2 inline-flex gap-2">
+        <button
+          type="button"
+          onClick={() => setActiveAction('deposit')}
+          className={activeAction === 'deposit' ? 'bg-surface-container-lowest text-primary px-4 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest' : 'text-on-surface-variant hover:text-on-surface px-4 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest'}
+        >
+          Deposit
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveAction('withdraw')}
+          className={activeAction === 'withdraw' ? 'bg-surface-container-lowest text-primary px-4 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest' : 'text-on-surface-variant hover:text-on-surface px-4 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest'}
+        >
+          Withdraw
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveAction('transfer')}
+          className={activeAction === 'transfer' ? 'bg-surface-container-lowest text-primary px-4 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest' : 'text-on-surface-variant hover:text-on-surface px-4 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest'}
+        >
+          Transfer
+        </button>
+      </div>
 
-        {/* Withdraw Section */}
-        <section className="space-y-6">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-            className="bg-surface-container-lowest rounded-xl p-6 shadow-[0px_20px_40px_rgba(42,52,57,0.02)]"
-          >
-            <div className="flex justify-between items-start mb-6">
-              <h2 className="text-sm font-bold tracking-tight text-on-surface uppercase">Withdraw</h2>
-              <span className="text-[10px] font-medium bg-surface-variant px-1.5 py-0.5 rounded-sm text-on-surface-variant">live</span>
-            </div>
-            <form className="space-y-4" onSubmit={handleWithdrawSubmit}>
-              <div>
-                <label className="block text-[10px] font-medium uppercase tracking-widest text-on-surface-variant mb-1">Source Account</label>
-                <select value={selectedWithdrawAccount} onChange={(e) => setSelectedWithdrawAccount(e.target.value)} className="w-full bg-surface-container-high border-none rounded-lg text-sm focus:ring-1 focus:ring-outline-variant focus:bg-surface-container-lowest precise-transition py-3">
-                  {accounts.map((account) => (
-                    <option key={account.id} value={account.accountId}>{account.name} • {account.accountId}</option>
-                  ))}
-                </select>
+      <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1.7fr)_minmax(320px,1fr)] gap-8 items-start">
+        <div>
+          {activeAction === 'deposit' && (
+            <motion.div
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              className="bg-surface-container-lowest rounded-xl p-6 shadow-[0px_20px_40px_rgba(42,52,57,0.02)]"
+            >
+              <div className="flex justify-between items-start mb-6">
+                <h2 className="text-sm font-bold tracking-tight text-on-surface uppercase">Deposit</h2>
+                <span className="text-[10px] font-medium bg-surface-variant px-1.5 py-0.5 rounded-sm text-on-surface-variant">live</span>
               </div>
-              <div>
-                <label className="block text-[10px] font-medium uppercase tracking-widest text-on-surface-variant mb-1">Amount Input</label>
-                <div className="relative">
-                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant text-sm">$</span>
-                  <input
-                    className="w-full bg-surface-container-high border-none rounded-lg text-sm pl-8 pr-4 py-3 focus:ring-1 focus:ring-outline-variant focus:bg-surface-container-lowest precise-transition"
-                    type="number"
-                    value={withdrawAmount}
-                    onChange={(e) => setWithdrawAmount(e.target.value)}
-                  />
-                </div>
-              </div>
-              <div className={withdrawWouldFail ? 'bg-error-container/10 p-3 rounded-lg flex items-start gap-3 border border-error-container/20' : 'bg-surface-container-low p-3 rounded-lg flex items-start gap-3 border border-transparent'}>
-                <AlertTriangle className={withdrawWouldFail ? 'text-error' : 'text-on-surface-variant'} size={18} />
+              <form className="space-y-4" onSubmit={handleDepositSubmit}>
                 <div>
-                  <p className={withdrawWouldFail ? 'text-[10px] font-bold text-error uppercase tracking-tight' : 'text-[10px] font-bold text-on-surface-variant uppercase tracking-tight'}>Balance Validation</p>
-                  <p className={withdrawWouldFail ? 'text-[11px] text-error' : 'text-[11px] text-on-surface-variant'}>
-                    {withdrawWouldFail
-                      ? `Requested amount exceeds current balance of $${(withdrawAccount?.balance ?? 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}`
-                      : `Available balance: $${(withdrawAccount?.balance ?? 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}`}
-                  </p>
-                </div>
-              </div>
-              <div className="bg-surface-container-low p-4 rounded-lg">
-                <p className="text-[10px] uppercase tracking-widest text-on-surface-variant mb-1">Net Balance After</p>
-                <p className={withdrawWouldFail ? 'text-xl font-bold tracking-tighter text-error' : 'text-xl font-bold tracking-tighter text-on-surface'}>${withdrawPreview.toLocaleString('en-US', { minimumFractionDigits: 2 })}</p>
-              </div>
-              <button
-                type="submit"
-                className="w-full bg-primary text-on-primary py-3 rounded-lg text-xs font-bold uppercase tracking-widest disabled:cursor-not-allowed disabled:opacity-50"
-                disabled={isWithdrawProcessing || !selectedWithdrawAccount || withdrawWouldFail}
-              >
-                {isWithdrawProcessing ? <Loader2 className="animate-spin mx-auto" size={16} /> : withdrawWouldFail ? 'Insufficient Funds' : 'Execute Withdrawal'}
-              </button>
-            </form>
-          </motion.div>
-        </section>
-
-        {/* Transfer Section */}
-        <section className="space-y-6">
-          <motion.div
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.2 }}
-            className="bg-surface-container-lowest rounded-xl p-6 shadow-[0px_20px_40px_rgba(42,52,57,0.02)] border border-transparent hover:border-outline-variant/10"
-          >
-            <div className="flex justify-between items-start mb-6">
-              <h2 className="text-sm font-bold tracking-tight text-on-surface uppercase">Transfer</h2>
-              <span className="text-[10px] font-medium bg-surface-variant px-1.5 py-0.5 rounded-sm text-on-surface-variant">live</span>
-            </div>
-            <form className="space-y-4" onSubmit={handleTransfer}>
-              <div className="grid grid-cols-1 gap-4">
-                <div>
-                  <label className="block text-[10px] font-medium uppercase tracking-widest text-on-surface-variant mb-1">From</label>
-                  <select value={selectedTransferFromAccount} onChange={(e) => setSelectedTransferFromAccount(e.target.value)} className="w-full bg-surface-container-high border-none rounded-lg text-sm py-3 px-4">
+                  <label className="block text-[10px] font-medium uppercase tracking-widest text-on-surface-variant mb-1">Account Selector</label>
+                  <select value={selectedDepositAccount} onChange={(e) => setSelectedDepositAccount(e.target.value)} className="w-full bg-surface-container-high border-none rounded-lg text-sm focus:ring-1 focus:ring-outline-variant focus:bg-surface-container-lowest precise-transition py-3">
                     {accounts.map((account) => (
-                      <option key={account.id} value={account.accountId}>{account.name}</option>
+                      <option key={account.id} value={account.accountId}>{account.name} • {account.accountId}</option>
                     ))}
                   </select>
                 </div>
-                <div className="flex justify-center -my-2 relative z-10">
-                  <div className="bg-surface-bright p-1 rounded-full shadow-sm">
-                    <ArrowDownToLine className="text-primary" size={14} />
+                <div>
+                  <label className="block text-[10px] font-medium uppercase tracking-widest text-on-surface-variant mb-1">Amount Input</label>
+                  <div className="relative">
+                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant text-sm">$</span>
+                    <input
+                      className="w-full bg-surface-container-high border-none rounded-lg text-sm pl-8 pr-4 py-3 focus:ring-1 focus:ring-outline-variant focus:bg-surface-container-lowest precise-transition"
+                      placeholder="0.00"
+                      type="number"
+                      value={depositAmount}
+                      onChange={(e) => setDepositAmount(e.target.value)}
+                    />
+                  </div>
+                </div>
+                <div className="bg-surface-container-low p-4 rounded-lg">
+                  <p className="text-[10px] uppercase tracking-widest text-on-surface-variant mb-1">Real-time Balance Preview</p>
+                  <p className="text-xl font-bold tracking-tighter text-on-surface">
+                    ${(depositAccount?.balance ?? 0).toLocaleString('en-US', { minimumFractionDigits: 2 })} <span className="text-secondary text-xs ml-1">+ ${parseAmount(depositAmount).toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
+                  </p>
+                </div>
+                <button type="submit" disabled={isDepositProcessing || !selectedDepositAccount} className="w-full bg-gradient-to-br from-primary to-primary-dim text-on-primary py-3 rounded-lg text-xs font-bold uppercase tracking-widest shadow-lg shadow-primary/10 hover:brightness-110 transition-all flex items-center justify-center gap-2 disabled:opacity-60">
+                  {isDepositProcessing ? <Loader2 className="animate-spin" size={16} /> : 'Execute Deposit'}
+                </button>
+              </form>
+            </motion.div>
+          )}
+
+          {activeAction === 'withdraw' && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 }}
+              className="bg-surface-container-lowest rounded-xl p-6 shadow-[0px_20px_40px_rgba(42,52,57,0.02)]"
+            >
+              <div className="flex justify-between items-start mb-6">
+                <h2 className="text-sm font-bold tracking-tight text-on-surface uppercase">Withdraw</h2>
+                <span className="text-[10px] font-medium bg-surface-variant px-1.5 py-0.5 rounded-sm text-on-surface-variant">live</span>
+              </div>
+              <form className="space-y-4" onSubmit={handleWithdrawSubmit}>
+                <div>
+                  <label className="block text-[10px] font-medium uppercase tracking-widest text-on-surface-variant mb-1">Source Account</label>
+                  <select value={selectedWithdrawAccount} onChange={(e) => setSelectedWithdrawAccount(e.target.value)} className="w-full bg-surface-container-high border-none rounded-lg text-sm focus:ring-1 focus:ring-outline-variant focus:bg-surface-container-lowest precise-transition py-3">
+                    {accounts.map((account) => (
+                      <option key={account.id} value={account.accountId}>{account.name} • {account.accountId}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[10px] font-medium uppercase tracking-widest text-on-surface-variant mb-1">Amount Input</label>
+                  <div className="relative">
+                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant text-sm">$</span>
+                    <input
+                      className="w-full bg-surface-container-high border-none rounded-lg text-sm pl-8 pr-4 py-3 focus:ring-1 focus:ring-outline-variant focus:bg-surface-container-lowest precise-transition"
+                      type="number"
+                      value={withdrawAmount}
+                      onChange={(e) => setWithdrawAmount(e.target.value)}
+                    />
+                  </div>
+                </div>
+                <div className={withdrawWouldFail ? 'bg-error-container/10 p-3 rounded-lg flex items-start gap-3 border border-error-container/20' : 'bg-surface-container-low p-3 rounded-lg flex items-start gap-3 border border-transparent'}>
+                  <AlertTriangle className={withdrawWouldFail ? 'text-error' : 'text-on-surface-variant'} size={18} />
+                  <div>
+                    <p className={withdrawWouldFail ? 'text-[10px] font-bold text-error uppercase tracking-tight' : 'text-[10px] font-bold text-on-surface-variant uppercase tracking-tight'}>Balance Validation</p>
+                    <p className={withdrawWouldFail ? 'text-[11px] text-error' : 'text-[11px] text-on-surface-variant'}>
+                      {withdrawWouldFail
+                        ? `Requested amount exceeds current balance of $${(withdrawAccount?.balance ?? 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}`
+                        : `Available balance: $${(withdrawAccount?.balance ?? 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}`}
+                    </p>
+                  </div>
+                </div>
+                <div className="bg-surface-container-low p-4 rounded-lg">
+                  <p className="text-[10px] uppercase tracking-widest text-on-surface-variant mb-1">Net Balance After</p>
+                  <p className={withdrawWouldFail ? 'text-xl font-bold tracking-tighter text-error' : 'text-xl font-bold tracking-tighter text-on-surface'}>${withdrawPreview.toLocaleString('en-US', { minimumFractionDigits: 2 })}</p>
+                </div>
+                <button
+                  type="submit"
+                  className="w-full bg-primary text-on-primary py-3 rounded-lg text-xs font-bold uppercase tracking-widest disabled:cursor-not-allowed disabled:opacity-50"
+                  disabled={isWithdrawProcessing || !selectedWithdrawAccount || withdrawWouldFail}
+                >
+                  {isWithdrawProcessing ? <Loader2 className="animate-spin mx-auto" size={16} /> : withdrawWouldFail ? 'Insufficient Funds' : 'Execute Withdrawal'}
+                </button>
+              </form>
+            </motion.div>
+          )}
+
+          {activeAction === 'transfer' && (
+            <motion.div
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.2 }}
+              className="bg-surface-container-lowest rounded-xl p-6 shadow-[0px_20px_40px_rgba(42,52,57,0.02)] border border-transparent hover:border-outline-variant/10"
+            >
+              <div className="flex justify-between items-start mb-6">
+                <h2 className="text-sm font-bold tracking-tight text-on-surface uppercase">Transfer</h2>
+                <span className="text-[10px] font-medium bg-surface-variant px-1.5 py-0.5 rounded-sm text-on-surface-variant">live</span>
+              </div>
+              <form className="space-y-4" onSubmit={handleTransfer}>
+                <div className="grid grid-cols-1 gap-4">
+                  <div>
+                    <label className="block text-[10px] font-medium uppercase tracking-widest text-on-surface-variant mb-1">From</label>
+                    <select value={selectedTransferFromAccount} onChange={(e) => setSelectedTransferFromAccount(e.target.value)} className="w-full bg-surface-container-high border-none rounded-lg text-sm py-3 px-4">
+                      {accounts.map((account) => (
+                        <option key={account.id} value={account.accountId}>{account.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="flex justify-center -my-2 relative z-10">
+                    <div className="bg-surface-bright p-1 rounded-full shadow-sm">
+                      <ArrowDownToLine className="text-primary" size={14} />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-medium uppercase tracking-widest text-on-surface-variant mb-1">To</label>
+                    <select value={selectedTransferToAccount} onChange={(e) => setSelectedTransferToAccount(e.target.value)} className="w-full bg-surface-container-high border-none rounded-lg text-sm py-3 px-4">
+                      {accounts.filter((account) => account.accountId !== selectedTransferFromAccount).map((account) => (
+                        <option key={account.id} value={account.accountId}>{account.name}</option>
+                      ))}
+                    </select>
                   </div>
                 </div>
                 <div>
-                  <label className="block text-[10px] font-medium uppercase tracking-widest text-on-surface-variant mb-1">To</label>
-                  <select value={selectedTransferToAccount} onChange={(e) => setSelectedTransferToAccount(e.target.value)} className="w-full bg-surface-container-high border-none rounded-lg text-sm py-3 px-4">
-                    {accounts.filter((account) => account.accountId !== selectedTransferFromAccount).map((account) => (
-                      <option key={account.id} value={account.accountId}>{account.name}</option>
-                    ))}
-                  </select>
+                  <label className="block text-[10px] font-medium uppercase tracking-widest text-on-surface-variant mb-1">Amount</label>
+                  <div className="relative">
+                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant text-sm">$</span>
+                    <input
+                      className="w-full bg-surface-container-high border-none rounded-lg text-sm pl-8 pr-4 py-3"
+                      placeholder="0.00"
+                      type="text"
+                      value={transferAmount}
+                      onChange={(e) => setTransferAmount(e.target.value)}
+                    />
+                  </div>
                 </div>
+                <div className="bg-surface-container-low p-4 rounded-lg flex justify-between items-center">
+                  <div>
+                    <p className="text-[10px] uppercase tracking-widest text-on-surface-variant">Fee</p>
+                    <p className="text-xs font-bold text-on-surface">$0.00</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-[10px] uppercase tracking-widest text-on-surface-variant">Processing</p>
+                    <p className="text-xs font-bold text-secondary italic">Instant</p>
+                  </div>
+                </div>
+                <button
+                  type="submit"
+                  disabled={isTransferProcessing || !selectedTransferFromAccount || !selectedTransferToAccount || selectedTransferFromAccount === selectedTransferToAccount}
+                  className="w-full bg-primary text-on-primary py-3 rounded-lg text-xs font-bold uppercase tracking-widest flex items-center justify-center gap-3 disabled:opacity-70"
+                >
+                  {isTransferProcessing ? (
+                    <>
+                      <Loader2 className="animate-spin" size={16} />
+                      Processing...
+                    </>
+                  ) : (
+                    'Initiate Transfer'
+                  )}
+                </button>
+              </form>
+            </motion.div>
+          )}
+        </div>
+
+        <aside className="xl:sticky xl:top-24 space-y-6">
+          <div className="bg-surface-container-lowest rounded-xl p-6 shadow-[0px_20px_40px_rgba(42,52,57,0.02)]">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant mb-2">Portfolio Snapshot</p>
+            <p className="text-3xl font-black tracking-tighter text-on-surface">
+              ${totalPortfolioBalance.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+            </p>
+            <p className="text-xs text-on-surface-variant mt-2">
+              Across {accounts.length} account{accounts.length === 1 ? '' : 's'}
+            </p>
+          </div>
+
+          <div className="bg-surface-container-low rounded-xl p-6 border border-outline-variant/10">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant mb-4">Selected Action Context</p>
+            <div className="space-y-3">
+              <div>
+                <p className="text-[10px] uppercase tracking-widest text-on-surface-variant">Action</p>
+                <p className="text-sm font-bold text-on-surface capitalize">{activeAction}</p>
               </div>
               <div>
-                <label className="block text-[10px] font-medium uppercase tracking-widest text-on-surface-variant mb-1">Amount</label>
-                <div className="relative">
-                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant text-sm">$</span>
-                  <input
-                    className="w-full bg-surface-container-high border-none rounded-lg text-sm pl-8 pr-4 py-3"
-                    placeholder="0.00"
-                    type="text"
-                    value={transferAmount}
-                    onChange={(e) => setTransferAmount(e.target.value)}
-                  />
-                </div>
+                <p className="text-[10px] uppercase tracking-widest text-on-surface-variant">Account</p>
+                <p className="text-sm font-bold text-on-surface">
+                  {selectedActionAccount ? `${selectedActionAccount.name} (${selectedActionAccount.accountId})` : 'Select an account'}
+                </p>
               </div>
-              <div className="bg-surface-container-low p-4 rounded-lg flex justify-between items-center">
-                <div>
-                  <p className="text-[10px] uppercase tracking-widest text-on-surface-variant">Fee</p>
-                  <p className="text-xs font-bold text-on-surface">$0.00</p>
-                </div>
-                <div className="text-right">
-                  <p className="text-[10px] uppercase tracking-widest text-on-surface-variant">Processing</p>
-                  <p className="text-xs font-bold text-secondary italic">Instant</p>
-                </div>
+              <div>
+                <p className="text-[10px] uppercase tracking-widest text-on-surface-variant">Current Balance</p>
+                <p className="text-sm font-bold text-on-surface">
+                  {selectedActionAccount
+                    ? `$${selectedActionAccount.balance.toLocaleString('en-US', { minimumFractionDigits: 2 })}`
+                    : '$0.00'}
+                </p>
               </div>
-              <button
-                type="submit"
-                disabled={isTransferProcessing || !selectedTransferFromAccount || !selectedTransferToAccount || selectedTransferFromAccount === selectedTransferToAccount}
-                className="w-full bg-primary text-on-primary py-3 rounded-lg text-xs font-bold uppercase tracking-widest flex items-center justify-center gap-3 disabled:opacity-70"
-              >
-                {isTransferProcessing ? (
-                  <>
-                    <Loader2 className="animate-spin" size={16} />
-                    Processing...
-                  </>
-                ) : (
-                  'Initiate Transfer'
-                )}
-              </button>
-            </form>
-          </motion.div>
-        </section>
+            </div>
+          </div>
+
+          <div className="bg-surface-container-lowest rounded-xl p-6 shadow-[0px_20px_40px_rgba(42,52,57,0.02)]">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant mb-4">Accounts</p>
+            <div className="space-y-3 max-h-72 overflow-y-auto custom-scrollbar">
+              {accounts.map((account) => (
+                <div key={account.id} className="rounded-lg bg-surface-container-low p-3">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-xs font-bold text-on-surface">{account.name}</span>
+                    <span className="text-[10px] font-mono text-on-surface-variant">{account.versionLabel}</span>
+                  </div>
+                  <p className="text-[10px] text-on-surface-variant">{account.accountId}</p>
+                  <p className="text-xs font-bold text-on-surface mt-1">
+                    ${account.balance.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </aside>
       </div>
     </div>
   );
