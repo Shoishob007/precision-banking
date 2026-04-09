@@ -84,10 +84,14 @@ async function getAccountByAccountId(
     `
       SELECT id, user_id, account_id, holder_name, display_name, account_type, balance, status, version
       FROM accounts
-      WHERE user_id = $1 AND account_id = $2
+      WHERE account_id = $1
+        AND (user_id = $2 OR EXISTS (
+          SELECT 1 FROM account_members
+          WHERE account_id = accounts.id AND user_id = $2 AND role IN ('owner', 'editor')
+        ))
       LIMIT 1
     `,
-    [userId, accountId],
+    [accountId, userId],
   );
 
   return result.rows[0] ?? null;

@@ -47,6 +47,19 @@ CREATE TABLE IF NOT EXISTS accounts (
 CREATE INDEX IF NOT EXISTS idx_accounts_user_id ON accounts(user_id);
 CREATE INDEX IF NOT EXISTS idx_accounts_account_id ON accounts(account_id);
 
+CREATE TABLE IF NOT EXISTS account_members (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  account_id UUID REFERENCES accounts(id) ON DELETE CASCADE,
+  user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+  role VARCHAR(32) NOT NULL CHECK (role IN ('owner', 'editor', 'viewer')),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE(account_id, user_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_account_members_account_id ON account_members(account_id);
+CREATE INDEX IF NOT EXISTS idx_account_members_user_id ON account_members(user_id);
+
 CREATE TABLE IF NOT EXISTS transactions (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   transaction_ref VARCHAR(64) NOT NULL UNIQUE,

@@ -10,6 +10,8 @@ interface AccountRow {
   balance: number;
   status: "active" | "standard" | "pending" | "locked";
   version: number;
+  member_count?: number;
+  has_members?: boolean;
 }
 
 function mapAccount(row: AccountRow) {
@@ -23,16 +25,25 @@ function mapAccount(row: AccountRow) {
     status: row.status,
     versionNumber: row.version,
     versionLabel: `v${row.version}`,
+    memberCount: row.member_count ?? 0,
+    isShared: (row.has_members ?? false) || (row.member_count ?? 0) > 0,
   };
 }
 
 export async function listAccountsForUser(userId: string) {
   const result = await pool.query<AccountRow>(
     `
-      SELECT id, account_id, display_name, account_type, holder_name, balance, status, version
-      FROM accounts
-      WHERE user_id = $1
-      ORDER BY account_id ASC
+      SELECT DISTINCT 
+        a.id, a.account_id, a.display_name, a.account_type, a.holder_name, a.balance, a.status, a.version,
+        (SELECT COUNT(*) FROM account_members WHERE account_id = a.id) as member_count,
+        EXISTS (SELECT 1 FROM account_members WHERE account_id = a.id) as has_members
+      FROM accounts a
+      WHERE a.user_id = $1
+        OR EXISTS (
+          SELECT 1 FROM account_members am
+          WHERE am.account_id = a.id AND am.user_id = $1 AND am.role IN ('owner', 'editor', 'viewer')
+        )
+      ORDER BY a.account_id ASC
     `,
     [userId],
   );
@@ -43,12 +54,19 @@ export async function listAccountsForUser(userId: string) {
 export async function getAccountForUser(userId: string, accountId: string) {
   const result = await pool.query<AccountRow>(
     `
-      SELECT id, account_id, display_name, account_type, holder_name, balance, status, version
-      FROM accounts
-      WHERE user_id = $1 AND account_id = $2
+      SELECT 
+        a.id, a.account_id, a.display_name, a.account_type, a.holder_name, a.balance, a.status, a.version,
+        (SELECT COUNT(*) FROM account_members WHERE account_id = a.id) as member_count,
+        EXISTS (SELECT 1 FROM account_members WHERE account_id = a.id) as has_members
+      FROM accounts a
+      WHERE a.account_id = $1
+        AND (a.user_id = $2 OR EXISTS (
+          SELECT 1 FROM account_members
+          WHERE account_id = a.id AND user_id = $2 AND role IN ('owner', 'editor', 'viewer')
+        ))
       LIMIT 1
     `,
-    [userId, accountId],
+    [accountId, userId],
   );
 
   const account = result.rows[0];

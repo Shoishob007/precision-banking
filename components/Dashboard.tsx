@@ -2,12 +2,13 @@
 
 import React, { useEffect, useState, useCallback } from 'react';
 import { motion } from 'motion/react';
-import { TrendingUp, TrendingDown, ArrowRight, Lock } from 'lucide-react';
+import { TrendingUp, TrendingDown, ArrowRight, Lock, Users } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Account, ActivityEvent } from '@/types';
 import { useAuth } from '@/context/AuthContext';
 import { apiRequest } from '@/lib/api';
 import { useRealtime, type BalanceUpdatedPayload, type TransactionCreatedPayload, type TransactionFailedPayload } from '@/context/RealtimeContext';
+import MembersPanel from '@/components/MembersPanel';
 
 interface DashboardSummaryResponse {
   accounts: Account[];
@@ -25,6 +26,7 @@ export default function Dashboard() {
   const [recentEvents, setRecentEvents] = useState<ActivityEvent[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [selectedAccountForMembers, setSelectedAccountForMembers] = useState<Account | null>(null);
 
   useEffect(() => {
     if (!token) {
@@ -169,9 +171,24 @@ export default function Dashboard() {
             </div>
 
             <div className="flex items-center justify-between border-t border-surface-container-low pt-4 mt-auto">
-              <span className="text-[11px] font-medium text-on-surface-variant">{account.holderName}</span>
-              <button className="text-primary hover:text-secondary-dim transition-colors">
-                {account.status === 'locked' ? <Lock size={18} /> : <ArrowRight size={18} />}
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] font-medium text-on-surface-variant">{account.holderName}</span>
+                {account.isShared && (
+                  <button
+                    onClick={() => setSelectedAccountForMembers(account)}
+                    className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-secondary-container/30 hover:bg-secondary-container/50 transition-colors text-secondary text-[9px] font-bold uppercase"
+                    title="View members"
+                  >
+                    <Users size={12} />
+                    {account.memberCount ?? 0}
+                  </button>
+                )}
+              </div>
+              <button
+                className="text-primary hover:text-secondary-dim transition-colors"
+                onClick={() => account.isShared && setSelectedAccountForMembers(account)}
+              >
+                {account.status === 'locked' ? <Lock size={18} /> : account.isShared ? <Users size={18} /> : <ArrowRight size={18} />}
               </button>
             </div>
           </motion.div>
@@ -210,6 +227,13 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
+
+      {selectedAccountForMembers && (
+        <MembersPanel
+          account={selectedAccountForMembers}
+          onClose={() => setSelectedAccountForMembers(null)}
+        />
+      )}
     </div>
   );
 }

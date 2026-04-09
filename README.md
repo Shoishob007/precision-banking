@@ -39,6 +39,92 @@ The `accounts` table includes:
 
 The `version` field is used in `UPDATE ... WHERE version = $expectedVersion` statements so concurrent writes only succeed if the account has not changed since it was read.
 
+## Shared Accounts & Multi-User Access
+
+Multiple users can now collaborate on the same account with role-based access control:
+
+### Account Members Table
+
+The new `account_members` table manages sharing:
+
+- `account_id` — the account being shared
+- `user_id` — the user being granted access
+- `role` — permission level: `owner`, `editor`, or `viewer`
+
+### Roles
+
+- **Owner** — Account creator, full control, can manage members
+- **Editor** — Can perform transactions (deposit/withdraw/transfer)
+- **Viewer** — Read-only access to account details
+
+### Example: Shared Account Scenario
+
+Account ACC1001 is created by Julian (owner). He can:
+
+1. Share it with Alice as an **editor** — Alice can now deposit/withdraw
+2. Share it with Bob as a **viewer** — Bob can see balances but cannot transact
+3. When Alice and Bob both try to withdraw simultaneously, optimistic locking prevents race conditions
+
+### Member Management APIs
+
+All require `Authorization: Bearer <token>`
+
+**List account members:**
+
+```
+GET /accounts/:accountId/members
+```
+
+**Add a member (owner only):**
+
+```
+POST /accounts/:accountId/members
+Content-Type: application/json
+
+{
+  "email": "alice@vance.corp",
+  "role": "editor"
+}
+```
+
+**Update member role (owner only):**
+
+```
+PATCH /accounts/:accountId/members/:userId
+Content-Type: application/json
+
+{
+  "role": "viewer"
+}
+```
+
+**Remove member (owner only):**
+
+```
+DELETE /accounts/:accountId/members/:userId
+```
+
+### Test Data
+
+Three users are seeded by default:
+
+- **julian@vance.corp** (password: `banking123`)
+  - Owner of ACC1001, ACC1002, ACC1003
+- **alice@vance.corp** (password: `banking123`)
+  - Editor on ACC1001 and ACC1002
+- **bob@vance.corp** (password: `banking123`)
+  - Viewer on ACC1001
+  - Editor on ACC1002
+
+### Frontend Integration
+
+New UI components:
+
+- **Accounts Page** (`/accounts`) — View all accessible accounts (owned + shared)
+- **Members Panel** (`MembersPanel.tsx`) — Modal to view and manage account members
+- **Dashboard** — Shows account member count and sharing status
+- **Account Cards** — Display "Shared with X members" badge
+
 ## Concurrency control strategy
 
 The transaction engine is implemented in `backend/src/services/transaction-service.ts`.
@@ -67,17 +153,24 @@ The transaction engine is implemented in `backend/src/services/transaction-servi
 1. Install backend dependencies:
    `cd backend && npm install`
 2. Review `backend/.env`
-3. Initialize the Neon schema and seed data:
+3. Initialize the Neon schema, run migrations, and seed data:
    `npm run db:setup`
+
+   This runs:
+   - `db:init` — Creates core schema (users, accounts, transactions, activity_events)
+   - `db:migrate` — Adds shared accounts table (account_members)
+   - `db:seed` — Populates test users and shared accounts
+
 4. Start the backend server:
    `npm run dev`
 
 The backend runs on `http://localhost:4000` by default.
 
-Seed credentials:
+Seed credentials (test users for shared account demonstrations):
 
-- Email: `julian@vance.corp`
-- Password: `banking123`
+- Email: `julian@vance.corp` (Owner) / Password: `banking123`
+- Email: `alice@vance.corp` (Collaborator) / Password: `banking123`
+- Email: `bob@vance.corp` (Collaborator) / Password: `banking123`
 
 ## API documentation
 
@@ -126,11 +219,41 @@ Both auth routes return:
 `GET /accounts`
 
 - Requires `Authorization: Bearer <token>`
-- Returns all accounts for the authenticated user
+- Returns all accounts for the authenticated user (both owned and shared)
+- Each account includes:
+  - `accountId`, `balance`, `versionNumber`, `versionLabel`
+  - `memberCount` — number of people with access (including owner)
+  - `isShared` — boolean if account is shared with others
 
 `GET /accounts/:accountId`
 
 - Returns a single account by `accountId`
+- Requires membership (owner, editor, or viewer role)
+
+`GET /accounts/:accountId/members`
+
+- Lists all members with access to the account
+- Each member includes:
+  - `userId`, `role` (owner/editor/viewer)
+  - `user` object with `name` and `email`
+  - `createdAt` timestamp
+
+`POST /accounts/:accountId/members`
+
+- Add a member to the account (owner only)
+- Request body: `{ "email": "newuser@example.com", "role": "editor" }`
+- Returns the created member object
+
+`PATCH /accounts/:accountId/members/:userId`
+
+- Update a member's role (owner only)
+- Request body: `{ "role": "viewer" }`
+- Cannot change owner's role
+
+`DELETE /accounts/:accountId/members/:userId`
+
+- Remove a member from the account (owner only)
+- Cannot remove the account owner
 
 ### Dashboard
 

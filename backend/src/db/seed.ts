@@ -7,7 +7,8 @@ async function main() {
   try {
     await client.query("BEGIN");
 
-    const userResult = await client.query<{ id: string }>(
+    // Create multiple users
+    const julian = await client.query<{ id: string }>(
       `
         INSERT INTO users (full_name, email, password_hash)
         VALUES ($1, $2, $3)
@@ -20,7 +21,35 @@ async function main() {
       ["Julian Vance", "julian@vance.corp", hashPassword("banking123")],
     );
 
-    const userId = userResult.rows[0].id;
+    const alice = await client.query<{ id: string }>(
+      `
+        INSERT INTO users (full_name, email, password_hash)
+        VALUES ($1, $2, $3)
+        ON CONFLICT (email)
+        DO UPDATE SET full_name = EXCLUDED.full_name,
+                      password_hash = EXCLUDED.password_hash,
+                      updated_at = NOW()
+        RETURNING id
+      `,
+      ["Alice Thompson", "alice@vance.corp", hashPassword("banking123")],
+    );
+
+    const bob = await client.query<{ id: string }>(
+      `
+        INSERT INTO users (full_name, email, password_hash)
+        VALUES ($1, $2, $3)
+        ON CONFLICT (email)
+        DO UPDATE SET full_name = EXCLUDED.full_name,
+                      password_hash = EXCLUDED.password_hash,
+                      updated_at = NOW()
+        RETURNING id
+      `,
+      ["Bob Martinez", "bob@vance.corp", hashPassword("banking123")],
+    );
+
+    const julianId = julian.rows[0].id;
+    const aliceId = alice.rows[0].id;
+    const bobId = bob.rows[0].id;
 
     await client.query(
       `
@@ -39,7 +68,44 @@ async function main() {
                       version = EXCLUDED.version,
                       updated_at = NOW()
       `,
-      [userId],
+      [julianId],
+    );
+
+    // Add shared account members - ACC1001 and ACC1002 are shared with Alice and Bob
+    await client.query(
+      `
+        INSERT INTO account_members (account_id, user_id, role)
+        SELECT a.id, $1, 'editor' FROM accounts a WHERE a.account_id = 'ACC1001'
+        ON CONFLICT (account_id, user_id) DO NOTHING
+      `,
+      [aliceId],
+    );
+
+    await client.query(
+      `
+        INSERT INTO account_members (account_id, user_id, role)
+        SELECT a.id, $1, 'viewer' FROM accounts a WHERE a.account_id = 'ACC1001'
+        ON CONFLICT (account_id, user_id) DO NOTHING
+      `,
+      [bobId],
+    );
+
+    await client.query(
+      `
+        INSERT INTO account_members (account_id, user_id, role)
+        SELECT a.id, $1, 'editor' FROM accounts a WHERE a.account_id = 'ACC1002'
+        ON CONFLICT (account_id, user_id) DO NOTHING
+      `,
+      [aliceId],
+    );
+
+    await client.query(
+      `
+        INSERT INTO account_members (account_id, user_id, role)
+        SELECT a.id, $1, 'editor' FROM accounts a WHERE a.account_id = 'ACC1002'
+        ON CONFLICT (account_id, user_id) DO NOTHING
+      `,
+      [bobId],
     );
 
     await client.query(
@@ -59,7 +125,7 @@ async function main() {
         WHERE a.account_id = 'ACC1001'
         ON CONFLICT (transaction_ref) DO NOTHING
       `,
-      [userId],
+      [julianId],
     );
 
     await client.query(
@@ -80,7 +146,7 @@ async function main() {
         WHERE a.account_id = 'ACC1002'
         ON CONFLICT (transaction_ref) DO NOTHING
       `,
-      [userId],
+      [julianId],
     );
 
     await client.query(
@@ -102,7 +168,7 @@ async function main() {
         WHERE src.account_id = 'ACC1001'
         ON CONFLICT (transaction_ref) DO NOTHING
       `,
-      [userId],
+      [julianId],
     );
 
     await client.query(
@@ -146,7 +212,17 @@ async function main() {
 
     await client.query("COMMIT");
     console.log("Database seeded successfully.");
-    console.log("Seed login: julian@vance.corp / banking123");
+    console.log("\n=== Test User Accounts ===");
+    console.log("Owner: julian@vance.corp / banking123");
+    console.log(
+      "Collaborator: alice@vance.corp / banking123 (editor on ACC1001, ACC1002)",
+    );
+    console.log(
+      "Collaborator: bob@vance.corp / banking123 (viewer on ACC1001, editor on ACC1002)",
+    );
+    console.log("\n=== Shared Accounts ===");
+    console.log("ACC1001: Shared with Alice (editor) and Bob (viewer)");
+    console.log("ACC1002: Shared with Alice (editor) and Bob (editor)");
   } catch (error) {
     await client.query("ROLLBACK");
     throw error;
