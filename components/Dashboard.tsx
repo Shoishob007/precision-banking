@@ -1,12 +1,13 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { motion } from 'motion/react';
 import { TrendingUp, TrendingDown, ArrowRight, Lock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Account, ActivityEvent } from '@/types';
 import { useAuth } from '@/context/AuthContext';
 import { apiRequest } from '@/lib/api';
+import { useRealtime, type BalanceUpdatedPayload, type TransactionCreatedPayload, type TransactionFailedPayload } from '@/context/RealtimeContext';
 
 interface DashboardSummaryResponse {
   accounts: Account[];
@@ -19,6 +20,7 @@ function formatTimestamp(timestamp: string) {
 
 export default function Dashboard() {
   const { token } = useAuth();
+  const { socket } = useRealtime();
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [recentEvents, setRecentEvents] = useState<ActivityEvent[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -44,6 +46,52 @@ export default function Dashboard() {
         setIsLoading(false);
       });
   }, [token]);
+
+  const handleBalanceUpdated = useCallback((payload: BalanceUpdatedPayload) => {
+    setAccounts((prev) =>
+      prev.map((account) =>
+        account.accountId === payload.account.accountId ? { ...account, ...payload.account } : account,
+      ),
+    );
+  }, []);
+
+  const handleTransactionCreated = useCallback((payload: TransactionCreatedPayload) => {
+    const event: ActivityEvent = {
+      id: payload.transaction.id,
+      type: payload.transaction.type,
+      message: `${payload.transaction.type} of $${payload.transaction.amount.toLocaleString('en-US', { minimumFractionDigits: 2 })} completed`,
+      timestamp: payload.transaction.createdAt,
+      status: 'success',
+      metadata: payload.transaction.transactionRef,
+    };
+    setRecentEvents((prev) => [event, ...prev.slice(0, 19)]);
+  }, []);
+
+  const handleTransactionFailed = useCallback((payload: TransactionFailedPayload) => {
+    const event: ActivityEvent = {
+      id: payload.transaction.id,
+      type: payload.transaction.type,
+      message: `${payload.transaction.type} failed: ${payload.reason}`,
+      timestamp: payload.transaction.createdAt,
+      status: 'error',
+      metadata: payload.transaction.transactionRef,
+    };
+    setRecentEvents((prev) => [event, ...prev.slice(0, 19)]);
+  }, []);
+
+  useEffect(() => {
+    if (!socket) return;
+
+    socket.on('balance:updated', handleBalanceUpdated);
+    socket.on('transaction:created', handleTransactionCreated);
+    socket.on('transaction:failed', handleTransactionFailed);
+
+    return () => {
+      socket.off('balance:updated', handleBalanceUpdated);
+      socket.off('transaction:created', handleTransactionCreated);
+      socket.off('transaction:failed', handleTransactionFailed);
+    };
+  }, [socket, handleBalanceUpdated, handleTransactionCreated, handleTransactionFailed]);
 
   return (
     <div className="p-8 lg:p-12 w-full space-y-12">

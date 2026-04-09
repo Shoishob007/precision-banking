@@ -1,21 +1,21 @@
 import type { Server as SocketIOServer } from "socket.io";
 
 export interface RealtimePublisher {
-  emitTransactionCreated(payload: unknown): void;
-  emitBalanceUpdated(payload: unknown): void;
-  emitTransactionFailed(payload: unknown): void;
+  emitTransactionCreated(userId: string, payload: unknown): void;
+  emitBalanceUpdated(userId: string, payload: unknown): void;
+  emitTransactionFailed(userId: string, payload: unknown): void;
 }
 
 export function createRealtimePublisher(io: SocketIOServer): RealtimePublisher {
   return {
-    emitTransactionCreated(payload) {
-      io.emit("transaction:created", payload);
+    emitTransactionCreated(userId, payload) {
+      io.to(`user:${userId}`).emit("transaction:created", payload);
     },
-    emitBalanceUpdated(payload) {
-      io.emit("balance:updated", payload);
+    emitBalanceUpdated(userId, payload) {
+      io.to(`user:${userId}`).emit("balance:updated", payload);
     },
-    emitTransactionFailed(payload) {
-      io.emit("transaction:failed", payload);
+    emitTransactionFailed(userId, payload) {
+      io.to(`user:${userId}`).emit("transaction:failed", payload);
     },
   };
 }

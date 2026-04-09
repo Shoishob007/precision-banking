@@ -262,7 +262,7 @@ async function recordFailure(
     await client.query("COMMIT");
 
     const transaction = await loadTransactionForUser(userId, transactionRef);
-    realtime.emitTransactionFailed({ transaction, reason });
+    realtime.emitTransactionFailed(userId, { transaction, reason });
 
     return transaction;
   } catch (error) {
@@ -281,10 +281,10 @@ async function finalizeSuccess(
 ) {
   const transaction = await loadTransactionForUser(userId, transactionRef);
 
-  realtime.emitTransactionCreated({ transaction });
+  realtime.emitTransactionCreated(userId, { transaction });
 
   for (const account of updatedAccounts) {
-    realtime.emitBalanceUpdated({ account: mapAccount(account) });
+    realtime.emitBalanceUpdated(userId, { account: mapAccount(account) });
   }
 
   return {
