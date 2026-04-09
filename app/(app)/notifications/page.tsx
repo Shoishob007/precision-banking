@@ -1,0 +1,6 @@
+import React from 'react';
+import NotificationsCenter from '@/components/NotificationsCenter';
+
+export default function NotificationsPage() {
+    return <NotificationsCenter />;
+}

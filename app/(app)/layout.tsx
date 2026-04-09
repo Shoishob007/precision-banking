@@ -5,6 +5,7 @@ import {
   LayoutDashboard,
   ArrowLeftRight,
   ReceiptText,
+  Bell,
   LogOut,
   Moon,
   Sun,
@@ -29,6 +30,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     { id: 'accounts', label: 'Accounts', icon: Wallet, path: '/accounts' },
     { id: 'transactions', label: 'Transactions', icon: ArrowLeftRight, path: '/transactions' },
     { id: 'ledger', label: 'Ledger', icon: ReceiptText, path: '/ledger' },
+    { id: 'notifications', label: 'Notifications', icon: Bell, path: '/notifications' },
   ];
 
   const activeTab = navItems.find(item => item.path === pathname)?.id || 'dashboard';
@@ -95,7 +97,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <header className="flex justify-between items-center px-8 py-4 w-full bg-surface/80 backdrop-blur-md sticky top-0 z-40 border-b border-outline-variant/10">
               <div className="flex items-center gap-4">
                 <h2 className="text-lg font-bold tracking-tighter text-on-surface capitalize">
-                  {activeTab === 'dashboard' ? 'Account Portfolio' : activeTab === 'accounts' ? 'All Accounts' : activeTab === 'transactions' ? 'Move Money' : 'Transaction Ledger'}
+                  {activeTab === 'dashboard'
+                    ? 'Account Portfolio'
+                    : activeTab === 'accounts'
+                      ? 'All Accounts'
+                      : activeTab === 'transactions'
+                        ? 'Move Money'
+                        : activeTab === 'notifications'
+                          ? 'Notifications Center'
+                          : 'Transaction Ledger'}
                 </h2>
                 <div className="flex items-center gap-2 bg-secondary-container/20 px-2 py-1 rounded-full">
                   <span className="h-2 w-2 rounded-full bg-secondary animate-pulse"></span>

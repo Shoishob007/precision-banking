@@ -1,16 +1,15 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ChevronLeft,
   ChevronRight,
   ArrowDownLeft,
   ArrowUpRight,
-  ArrowLeftRight,
-  Bolt
+  ArrowLeftRight
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { ActivityEvent, Transaction } from '@/types';
+import { Transaction } from '@/types';
 import { useAuth } from '@/context/AuthContext';
 import { apiRequest } from '@/lib/api';
 
@@ -23,24 +22,8 @@ interface TransactionsResponse {
   limit: number;
 }
 
-interface ActivityResponse {
-  activity: ActivityEvent[];
-}
-
 function formatTimestamp(timestamp: string) {
   return new Date(timestamp).toLocaleString();
-}
-
-function activityColor(event: ActivityEvent) {
-  if (event.status === 'error') {
-    return 'error';
-  }
-
-  if (event.type === 'balance:updated') {
-    return 'secondary';
-  }
-
-  return 'primary';
 }
 
 export default function Ledger() {
@@ -50,13 +33,12 @@ export default function Ledger() {
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
   const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [feedEvents, setFeedEvents] = useState<ActivityEvent[]>([]);
   const [totalCount, setTotalCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const itemsPerPage = 4;
 
-  useEffect(() => {
+  const loadLedgerData = useCallback(async () => {
     if (!token) {
       return;
     }
@@ -68,22 +50,24 @@ export default function Ledger() {
     const fromDateQuery = fromDate ? `&fromDate=${fromDate}` : '';
     const toDateQuery = toDate ? `&toDate=${toDate}` : '';
 
-    Promise.all([
-      apiRequest<TransactionsResponse>(`/api/transactions?page=${currentPage}&limit=${itemsPerPage}${typeQuery}${fromDateQuery}${toDateQuery}`, {}, token),
-      apiRequest<ActivityResponse>('/api/dashboard/activity-feed?limit=10', {}, token)
-    ])
-      .then(([transactionData, activityData]) => {
-        setTransactions(transactionData.items);
-        setTotalCount(transactionData.total);
-        setFeedEvents(activityData.activity);
-      })
-      .catch((requestError: Error) => {
-        setError(requestError.message);
-      })
-      .finally(() => {
-        setIsLoading(false);
-      });
+    try {
+      const transactionData = await apiRequest<TransactionsResponse>(
+        `/api/transactions?page=${currentPage}&limit=${itemsPerPage}${typeQuery}${fromDateQuery}${toDateQuery}`,
+        {},
+        token,
+      );
+      setTransactions(transactionData.items);
+      setTotalCount(transactionData.total);
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : 'Failed to load ledger data.');
+    } finally {
+      setIsLoading(false);
+    }
   }, [currentPage, filterType, fromDate, toDate, itemsPerPage, token]);
+
+  useEffect(() => {
+    void loadLedgerData();
+  }, [loadLedgerData]);
 
   const totalPages = useMemo(() => Math.max(1, Math.ceil(totalCount / itemsPerPage)), [totalCount, itemsPerPage]);
 
@@ -94,8 +78,7 @@ export default function Ledger() {
   };
 
   return (
-    <div className="flex flex-1 overflow-hidden h-full ">
-      {/* Left Side: Table & Filters */}
+    <div className="flex flex-1 overflow-hidden h-full">
       <section className="flex-1 p-8 lg:p-12 overflow-y-auto custom-scrollbar">
         {error && (
           <div className="mb-6 rounded-xl border border-error/20 bg-error-container/10 px-4 py-3 text-sm text-error">
@@ -267,49 +250,8 @@ export default function Ledger() {
             </button>
           </div>
         </div>
+
       </section>
-
-      {/* Right Sidebar: Real-time Notification Panel */}
-      <aside className="hidden xl:flex flex-col w-80 bg-surface-container-low p-6 border-l border-transparent">
-        <div className="flex items-center justify-between mb-8">
-          <h3 className="text-[10px] font-black text-on-surface uppercase tracking-widest">Activity Feed</h3>
-          <Bolt className="text-on-surface-variant" size={18} />
-        </div>
-
-        <div className="flex-1 overflow-y-auto custom-scrollbar space-y-4">
-          {!isLoading && feedEvents.length === 0 && (
-            <div className="bg-surface-container-lowest p-4 rounded-lg text-sm text-on-surface-variant">
-              No activity yet for this user.
-            </div>
-          )}
-          {feedEvents.map((event) => (
-            <div
-              key={event.id}
-              className="bg-surface-container-lowest p-4 rounded-lg shadow-[0px_2px_10px_rgba(42,52,57,0.04)] relative overflow-hidden group"
-            >
-              <div className={cn(
-                "absolute top-0 left-0 h-full w-1",
-                activityColor(event) === 'secondary' ? "bg-secondary" :
-                  activityColor(event) === 'primary' ? "bg-primary" : "bg-error"
-              )}></div>
-              <div className="flex justify-between items-start mb-2">
-                <span className={cn(
-                  "text-[9px] font-bold uppercase tracking-tighter",
-                  activityColor(event) === 'secondary' ? "text-secondary" :
-                    activityColor(event) === 'primary' ? "text-primary" : "text-error"
-                )}>{event.type}</span>
-                <span className="text-[9px] text-on-surface-variant">{formatTimestamp(event.timestamp)}</span>
-              </div>
-              <p className="text-xs text-on-surface leading-relaxed">
-                {event.message} {event.metadata && <span className={cn("font-bold", activityColor(event) === 'secondary' ? "text-secondary" : "text-on-surface")}>{event.metadata}</span>}
-              </p>
-            </div>
-          ))}
-        </div>
-
-        <div className="mt-6">
-        </div>
-      </aside>
     </div>
   );
 }

@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { ApiError, apiRequest } from '@/lib/api';
+import { useRealtime, type BalanceUpdatedPayload, type TransactionCreatedPayload, type TransactionFailedPayload } from '@/context/RealtimeContext';
 import type { Account } from '@/types';
 
 interface AccountsResponse {
@@ -33,6 +34,7 @@ type TransactionAction = 'deposit' | 'withdraw' | 'transfer';
 
 export default function Transactions() {
   const { token } = useAuth();
+  const { socket } = useRealtime();
   const [activeAction, setActiveAction] = useState<TransactionAction>('deposit');
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [selectedDepositAccount, setSelectedDepositAccount] = useState('');
@@ -115,6 +117,40 @@ export default function Transactions() {
     const data = await apiRequest<AccountsResponse>('/api/accounts', {}, token);
     setAccounts(data.accounts);
   }
+
+  useEffect(() => {
+    if (!socket) {
+      return;
+    }
+
+    const handleBalanceUpdated = (payload: BalanceUpdatedPayload) => {
+      setAccounts((prev) => prev.map((account) => (
+        account.accountId === payload.account.accountId ? { ...account, ...payload.account } : account
+      )));
+    };
+
+    const handleTransactionCreated = (payload: TransactionCreatedPayload) => {
+      setFeedback(`Real-time update: ${payload.transaction.type} completed (${payload.transaction.transactionRef})`);
+      setError(null);
+      void refreshAccounts();
+    };
+
+    const handleTransactionFailed = (payload: TransactionFailedPayload) => {
+      setError(`Real-time update: ${payload.transaction.type} failed (${payload.reason})`);
+      setFeedback(null);
+      void refreshAccounts();
+    };
+
+    socket.on('balance:updated', handleBalanceUpdated);
+    socket.on('transaction:created', handleTransactionCreated);
+    socket.on('transaction:failed', handleTransactionFailed);
+
+    return () => {
+      socket.off('balance:updated', handleBalanceUpdated);
+      socket.off('transaction:created', handleTransactionCreated);
+      socket.off('transaction:failed', handleTransactionFailed);
+    };
+  }, [socket, token]);
 
   async function handleDepositSubmit(e: React.FormEvent) {
     e.preventDefault();

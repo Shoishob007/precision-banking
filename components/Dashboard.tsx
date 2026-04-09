@@ -179,7 +179,7 @@ export default function Dashboard() {
                   {canOpenMembersPanel && (
                     <button
                       onClick={() => setSelectedAccountForMembers(account)}
-                      className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-secondary-container/30 hover:bg-secondary-container/50 transition-colors text-secondary text-[9px] font-bold uppercase"
+                      className="flex cursor-pointer items-center gap-1 px-2.5 py-1 rounded-full bg-secondary-container/30 hover:bg-secondary-container/50 transition-colors text-secondary text-[9px] font-bold uppercase"
                       title={account.userRole === 'owner' ? 'Manage members' : 'View members'}
                     >
                       <Users size={12} />
@@ -188,7 +188,7 @@ export default function Dashboard() {
                   )}
                 </div>
                 <button
-                  className="text-primary hover:text-secondary-dim transition-colors"
+                  className="cursor-pointer text-primary hover:text-secondary-dim transition-colors"
                   onClick={() => canOpenMembersPanel && setSelectedAccountForMembers(account)}
                 >
                   {account.status === 'locked' ? <Lock size={18} /> : canOpenMembersPanel ? <Users size={18} /> : <ArrowRight size={18} />}
