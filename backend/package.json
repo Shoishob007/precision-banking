@@ -11,7 +11,10 @@
     "db:migrate": "tsx src/db/migrate.ts",
     "db:seed": "tsx src/db/seed.ts",
     "db:setup": "npm run db:init && npm run db:migrate && npm run db:seed",
-    "load:test": "k6 run load-tests/transactions.js"
+    "load:test": "npx artillery@2.0.20 run load-tests/artillery-transactions.yml",
+    "load:test:report": "node -e \"require('fs').mkdirSync('load-tests/results',{recursive:true})\" && npx artillery@2.0.20 run --output load-tests/results/artillery-report.json load-tests/artillery-transactions.yml",
+    "load:test:html": "npx artillery@2.0.20 report --output load-tests/results/artillery-report.html load-tests/results/artillery-report.json",
+    "load:validate": "node load-tests/validate-consistency.mjs"
   },
   "dependencies": {
     "cors": "^2.8.5",
@@ -27,6 +30,7 @@
     "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^22.14.0",
     "@types/pg": "^8.15.2",
+    "artillery": "^2.0.20",
     "tsx": "^4.21.0",
     "typescript": "~5.8.2"
   }

@@ -328,24 +328,51 @@ Socket.IO emits:
 
 ## Load testing
 
-A k6 script is included at `backend/load-tests/transactions.js`.
+Load testing is implemented with Artillery.
 
-Example usage:
+Scenario file:
+
+- `backend/load-tests/artillery-transactions.yml`
+
+Execution command:
 
 ```bash
 cd backend
-k6 run load-tests/transactions.js
+npm run load:test
 ```
 
-You can override values with environment variables:
+This runs a concurrency scenario against:
 
-- `API_BASE_URL`
-- `LOGIN_EMAIL`
-- `LOGIN_PASSWORD`
-- `ACCOUNT_ID`
-- `AMOUNT`
+- `POST /api/auth/login`
+- `POST /api/transactions`
 
-The default scenario uses 1000 concurrent virtual users posting deposits to `/api/transactions`.
+Default behavior targets 1000 arrival rate for 10 seconds using seeded credentials.
+
+To change target URL, credentials, account, amount, or intensity, edit `backend/load-tests/artillery-transactions.yml`.
+
+Note: On a local laptop, a 1000-arrival profile may produce transport errors (`ECONNREFUSED` / `ETIMEDOUT`) due to machine limits. Keep the 1000 profile for assignment evidence, and use a lower profile for iterative debugging.
+
+### Save results for submission
+
+```bash
+npm run load:test:report
+npm run load:test:html
+```
+
+Artifacts are generated in:
+
+- `backend/load-tests/results/artillery-report.json`
+- `backend/load-tests/results/artillery-report.html`
+
+### Post-test consistency validation
+
+Run:
+
+```bash
+npm run load:validate
+```
+
+This verifies account balances are non-negative after the load test and prints a concise summary suitable for submission notes.
 
 ## Verified status
 

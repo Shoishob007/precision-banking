@@ -1,0 +1,34 @@
+config:
+  target: "http://localhost:4000"
+  phases:
+    - duration: 10
+      arrivalRate: 1000
+      name: "Concurrent transaction pressure"
+  defaults:
+    headers:
+      Content-Type: application/json
+  processor: "./artillery-processor.cjs"
+
+scenarios:
+  - name: "Concurrent transactions against shared account"
+    flow:
+      - post:
+          url: "/api/auth/login"
+          json:
+            email: "julian@vance.corp"
+            password: "banking123"
+          capture:
+            - json: "$.token"
+              as: "token"
+
+      - post:
+          url: "/api/transactions"
+          headers:
+            Authorization: "Bearer {{ token }}"
+          json:
+            type: "withdraw"
+            accountId: "ACC1001"
+            amount: 1
+            metadata:
+              source: "artillery-load-test"
+          afterResponse: "trackTransactionResponse"
