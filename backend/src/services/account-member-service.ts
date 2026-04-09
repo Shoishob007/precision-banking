@@ -65,11 +65,45 @@ export async function listAccountMembers(userId: string, accountId: string) {
 
   const result = await pool.query<AccountMemberRow & UserRow>(
     `
-      SELECT am.id, am.user_id, am.account_id, am.role, am.created_at, am.updated_at, u.full_name, u.email
-      FROM account_members am
-      JOIN users u ON u.id = am.user_id
-      WHERE am.account_id = (SELECT id FROM accounts WHERE account_id = $1)
-      ORDER BY am.created_at ASC
+      WITH target_account AS (
+        SELECT id, user_id
+        FROM accounts
+        WHERE account_id = $1
+        LIMIT 1
+      ),
+      owner_member AS (
+        SELECT
+          a.id AS id,
+          a.user_id AS user_id,
+          a.id AS account_id,
+          'owner'::varchar(32) AS role,
+          NOW()::timestamptz AS created_at,
+          NOW()::timestamptz AS updated_at,
+          u.full_name,
+          u.email
+        FROM target_account a
+        JOIN users u ON u.id = a.user_id
+      ),
+      shared_members AS (
+        SELECT
+          am.id,
+          am.user_id,
+          am.account_id,
+          am.role,
+          am.created_at,
+          am.updated_at,
+          u.full_name,
+          u.email
+        FROM account_members am
+        JOIN users u ON u.id = am.user_id
+        JOIN target_account a ON a.id = am.account_id
+      )
+      SELECT *
+      FROM owner_member
+      UNION ALL
+      SELECT *
+      FROM shared_members
+      ORDER BY created_at ASC
     `,
     [accountId],
   );
@@ -130,14 +164,14 @@ export async function addAccountMember(
   // Add member
   const result = await pool.query<AccountMemberRow & UserRow>(
     `
-      INSERT INTO account_members (account_id, user_id, role)
-      VALUES ($1, $2, $3)
-      RETURNING am.id, am.user_id, am.account_id, am.role, am.created_at, am.updated_at,
-                u.full_name, u.email
-      FROM account_members am
-      JOIN users u ON u.id = $2
-      WHERE am.id = (SELECT id FROM account_members
-                      WHERE account_id = $1 AND user_id = $2)
+      WITH inserted AS (
+        INSERT INTO account_members (account_id, user_id, role)
+        VALUES ($1, $2, $3)
+        RETURNING id, user_id, account_id, role, created_at, updated_at
+      )
+      SELECT i.id, i.user_id, i.account_id, i.role, i.created_at, i.updated_at, u.full_name, u.email
+      FROM inserted i
+      JOIN users u ON u.id = i.user_id
     `,
     [account.id, targetUser.id, role],
   );

@@ -450,21 +450,15 @@ async function processTransfer(
 
     try {
       await client.query("BEGIN");
-      const accountsResult = await client.query<AccountRow>(
-        `
-          SELECT id, user_id, account_id, holder_name, display_name, account_type, balance, status, version
-          FROM accounts
-          WHERE user_id = $1 AND account_id = ANY($2::varchar[])
-        `,
-        [userId, [input.sourceAccountId, input.destinationAccountId]],
+      const source = await getAccountByAccountId(
+        client,
+        userId,
+        input.sourceAccountId,
       );
-
-      const source = accountsResult.rows.find(
-        (account: AccountRow) => account.account_id === input.sourceAccountId,
-      );
-      const destination = accountsResult.rows.find(
-        (account: AccountRow) =>
-          account.account_id === input.destinationAccountId,
+      const destination = await getAccountByAccountId(
+        client,
+        userId,
+        input.destinationAccountId,
       );
 
       if (!source || !destination) {

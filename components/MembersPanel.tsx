@@ -35,7 +35,7 @@ export default function MembersPanel({ account, onClose }: MembersPanelProps) {
     const [isAddingMember, setIsAddingMember] = useState(false);
     const [roleEditingId, setRoleEditingId] = useState<string | null>(null);
 
-    const isOwner = members.some((m) => m.userId === user?.id && m.role === 'owner');
+    const isOwner = account.userRole === 'owner' || members.some((m) => m.userId === user?.id && m.role === 'owner');
 
     useEffect(() => {
         if (!token) return;
@@ -81,7 +81,7 @@ export default function MembersPanel({ account, onClose }: MembersPanelProps) {
 
         try {
             await removeAccountMember(account.accountId, memberId, token);
-            setMembers(members.filter((m) => m.id !== memberId));
+            setMembers(members.filter((m) => m.userId !== memberId));
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Failed to remove member');
         }

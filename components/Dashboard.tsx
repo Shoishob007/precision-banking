@@ -119,80 +119,84 @@ export default function Dashboard() {
             Loading accounts...
           </div>
         )}
-        {accounts.map((account) => (
-          <motion.div
-            key={account.id}
-            whileHover={{ y: -4 }}
-            transition={{ duration: 0.2, ease: [0.2, 0, 0, 1] }}
-            className={cn(
-              "group bg-surface-container-lowest p-8 rounded-lg shadow-[0px_20px_40px_rgba(42,52,57,0.04)] transition-all duration-300 relative cursor-pointer hover:bg-surface-container-low",
-              account.status === 'locked' && "border-l-4 border-tertiary"
-            )}
-          >
-            <div className="flex justify-between items-start mb-10">
-              <div>
-                <p className="text-[10px] font-sans text-on-surface-variant uppercase tracking-widest mb-1">Account ID</p>
-                <p className="text-sm font-sans font-bold text-primary">{account.accountId}</p>
-              </div>
-              <div className={cn(
-                "px-2 py-0.5 rounded-sm",
-                account.status === 'locked' ? "bg-tertiary-container" : "bg-surface-variant"
-              )}>
-                <span className={cn(
-                  "text-[9px] font-mono",
-                  account.status === 'locked' ? "text-on-tertiary-container font-bold" : "text-on-surface-variant"
+        {accounts.map((account) => {
+          const canOpenMembersPanel = account.userRole === 'owner' || account.isShared;
+
+          return (
+            <motion.div
+              key={account.id}
+              whileHover={{ y: -4 }}
+              transition={{ duration: 0.2, ease: [0.2, 0, 0, 1] }}
+              className={cn(
+                "group bg-surface-container-lowest p-8 rounded-lg shadow-[0px_20px_40px_rgba(42,52,57,0.04)] transition-all duration-300 relative cursor-pointer hover:bg-surface-container-low",
+                account.status === 'locked' && "border-l-4 border-tertiary"
+              )}
+            >
+              <div className="flex justify-between items-start mb-10">
+                <div>
+                  <p className="text-[10px] font-sans text-on-surface-variant uppercase tracking-widest mb-1">Account ID</p>
+                  <p className="text-sm font-sans font-bold text-primary">{account.accountId}</p>
+                </div>
+                <div className={cn(
+                  "px-2 py-0.5 rounded-sm",
+                  account.status === 'locked' ? "bg-tertiary-container" : "bg-surface-variant"
                 )}>
-                  {account.versionLabel}
-                </span>
-              </div>
-            </div>
-
-            <div className="mb-8">
-              <p className="text-[10px] font-sans text-on-surface-variant uppercase tracking-widest mb-1">Current Balance</p>
-              <div className="flex items-baseline space-x-2">
-                <span className="text-3xl font-sans font-black tracking-tighter text-on-surface">
-                  ${account.balance.toLocaleString('en-US', { minimumFractionDigits: 2 })}
-                </span>
-                {account.change && (
-                  <div className={cn(
-                    "flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-bold",
-                    account.changeType === 'up' ? "bg-secondary-container text-on-secondary-container" : "bg-error-container/20 text-error"
+                  <span className={cn(
+                    "text-[9px] font-mono",
+                    account.status === 'locked' ? "text-on-tertiary-container font-bold" : "text-on-surface-variant"
                   )}>
-                    {account.changeType === 'up' ? <TrendingUp size={12} className="mr-0.5" /> : <TrendingDown size={12} className="mr-0.5" />}
-                    {account.changeType === 'up' ? '+' : '-'}{account.change}%
-                  </div>
-                )}
-                {account.status === 'locked' && (
-                  <div className="flex items-center bg-surface-container-high px-1.5 py-0.5 rounded-full text-[9px] font-bold text-on-surface-variant">
-                    STABLE
-                  </div>
-                )}
+                    {account.versionLabel}
+                  </span>
+                </div>
               </div>
-            </div>
 
-            <div className="flex items-center justify-between border-t border-surface-container-low pt-4 mt-auto">
-              <div className="flex items-center gap-2">
-                <span className="text-[11px] font-medium text-on-surface-variant">{account.holderName}</span>
-                {account.isShared && (
-                  <button
-                    onClick={() => setSelectedAccountForMembers(account)}
-                    className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-secondary-container/30 hover:bg-secondary-container/50 transition-colors text-secondary text-[9px] font-bold uppercase"
-                    title="View members"
-                  >
-                    <Users size={12} />
-                    {account.memberCount ?? 0}
-                  </button>
-                )}
+              <div className="mb-8">
+                <p className="text-[10px] font-sans text-on-surface-variant uppercase tracking-widest mb-1">Current Balance</p>
+                <div className="flex items-baseline space-x-2">
+                  <span className="text-3xl font-sans font-black tracking-tighter text-on-surface">
+                    ${account.balance.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                  </span>
+                  {account.change && (
+                    <div className={cn(
+                      "flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-bold",
+                      account.changeType === 'up' ? "bg-secondary-container text-on-secondary-container" : "bg-error-container/20 text-error"
+                    )}>
+                      {account.changeType === 'up' ? <TrendingUp size={12} className="mr-0.5" /> : <TrendingDown size={12} className="mr-0.5" />}
+                      {account.changeType === 'up' ? '+' : '-'}{account.change}%
+                    </div>
+                  )}
+                  {account.status === 'locked' && (
+                    <div className="flex items-center bg-surface-container-high px-1.5 py-0.5 rounded-full text-[9px] font-bold text-on-surface-variant">
+                      STABLE
+                    </div>
+                  )}
+                </div>
               </div>
-              <button
-                className="text-primary hover:text-secondary-dim transition-colors"
-                onClick={() => account.isShared && setSelectedAccountForMembers(account)}
-              >
-                {account.status === 'locked' ? <Lock size={18} /> : account.isShared ? <Users size={18} /> : <ArrowRight size={18} />}
-              </button>
-            </div>
-          </motion.div>
-        ))}
+
+              <div className="flex items-center justify-between border-t border-surface-container-low pt-4 mt-auto">
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] font-medium text-on-surface-variant">{account.holderName}</span>
+                  {canOpenMembersPanel && (
+                    <button
+                      onClick={() => setSelectedAccountForMembers(account)}
+                      className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-secondary-container/30 hover:bg-secondary-container/50 transition-colors text-secondary text-[9px] font-bold uppercase"
+                      title={account.userRole === 'owner' ? 'Manage members' : 'View members'}
+                    >
+                      <Users size={12} />
+                      {account.userRole === 'owner' ? 'Manage' : (account.memberCount ?? 0)}
+                    </button>
+                  )}
+                </div>
+                <button
+                  className="text-primary hover:text-secondary-dim transition-colors"
+                  onClick={() => canOpenMembersPanel && setSelectedAccountForMembers(account)}
+                >
+                  {account.status === 'locked' ? <Lock size={18} /> : canOpenMembersPanel ? <Users size={18} /> : <ArrowRight size={18} />}
+                </button>
+              </div>
+            </motion.div>
+          );
+        })}
       </div>
 
       {/* Activity Layer */}

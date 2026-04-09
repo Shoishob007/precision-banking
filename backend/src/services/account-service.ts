@@ -12,6 +12,7 @@ interface AccountRow {
   version: number;
   member_count?: number;
   has_members?: boolean;
+  user_role?: "owner" | "editor" | "viewer";
 }
 
 function mapAccount(row: AccountRow) {
@@ -27,6 +28,7 @@ function mapAccount(row: AccountRow) {
     versionLabel: `v${row.version}`,
     memberCount: row.member_count ?? 0,
     isShared: (row.has_members ?? false) || (row.member_count ?? 0) > 0,
+    userRole: row.user_role,
   };
 }
 
@@ -36,7 +38,16 @@ export async function listAccountsForUser(userId: string) {
       SELECT DISTINCT 
         a.id, a.account_id, a.display_name, a.account_type, a.holder_name, a.balance, a.status, a.version,
         (SELECT COUNT(*) FROM account_members WHERE account_id = a.id) as member_count,
-        EXISTS (SELECT 1 FROM account_members WHERE account_id = a.id) as has_members
+        EXISTS (SELECT 1 FROM account_members WHERE account_id = a.id) as has_members,
+        CASE
+          WHEN a.user_id = $1 THEN 'owner'
+          ELSE (
+            SELECT am.role
+            FROM account_members am
+            WHERE am.account_id = a.id AND am.user_id = $1
+            LIMIT 1
+          )
+        END as user_role
       FROM accounts a
       WHERE a.user_id = $1
         OR EXISTS (
@@ -57,7 +68,16 @@ export async function getAccountForUser(userId: string, accountId: string) {
       SELECT 
         a.id, a.account_id, a.display_name, a.account_type, a.holder_name, a.balance, a.status, a.version,
         (SELECT COUNT(*) FROM account_members WHERE account_id = a.id) as member_count,
-        EXISTS (SELECT 1 FROM account_members WHERE account_id = a.id) as has_members
+        EXISTS (SELECT 1 FROM account_members WHERE account_id = a.id) as has_members,
+        CASE
+          WHEN a.user_id = $2 THEN 'owner'
+          ELSE (
+            SELECT am.role
+            FROM account_members am
+            WHERE am.account_id = a.id AND am.user_id = $2
+            LIMIT 1
+          )
+        END as user_role
       FROM accounts a
       WHERE a.account_id = $1
         AND (a.user_id = $2 OR EXISTS (
