@@ -6,6 +6,10 @@ import { API_BASE_URL } from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
 import type { Account, Transaction } from '@/types';
 
+const REALTIME_ENABLED =
+    process.env.NEXT_PUBLIC_ENABLE_REALTIME === 'true' ||
+    API_BASE_URL.includes('localhost');
+
 export interface TransactionCreatedPayload {
     transaction: Transaction;
 }
@@ -30,7 +34,7 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
     const [socket, setSocket] = useState<Socket | null>(null);
 
     useEffect(() => {
-        if (!token) {
+        if (!token || !REALTIME_ENABLED) {
             setSocket(null);
             return;
         }
