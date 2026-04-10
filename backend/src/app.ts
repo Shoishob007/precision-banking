@@ -17,9 +17,26 @@ const noopRealtimePublisher: RealtimePublisher = {
 export function createApp(realtime: RealtimePublisher) {
   const app = express();
 
+  const allowedOrigins = new Set(env.frontendUrls);
+
+  const corsOrigin: cors.CorsOptions["origin"] = (origin, callback) => {
+    // Allow non-browser and same-origin requests with no Origin header.
+    if (!origin) {
+      callback(null, true);
+      return;
+    }
+
+    if (allowedOrigins.has(origin) || origin.endsWith(".vercel.app")) {
+      callback(null, true);
+      return;
+    }
+
+    callback(new Error("Not allowed by CORS"));
+  };
+
   app.use(
     cors({
-      origin: env.frontendUrls,
+      origin: corsOrigin,
       credentials: true,
     }),
   );
