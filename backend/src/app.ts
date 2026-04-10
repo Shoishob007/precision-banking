@@ -8,6 +8,12 @@ import { dashboardRouter } from "./routes/dashboard-routes.js";
 import { createTransactionRouter } from "./routes/transaction-routes.js";
 import { errorHandler } from "./middleware/error-handler.js";
 
+const noopRealtimePublisher: RealtimePublisher = {
+  emitTransactionCreated() {},
+  emitBalanceUpdated() {},
+  emitTransactionFailed() {},
+};
+
 export function createApp(realtime: RealtimePublisher) {
   const app = express();
 
@@ -32,3 +38,8 @@ export function createApp(realtime: RealtimePublisher) {
 
   return app;
 }
+
+// Serverless entrypoint for environments like Vercel that expect a default handler export.
+const app = createApp(noopRealtimePublisher);
+
+export default app;
