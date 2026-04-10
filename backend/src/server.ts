@@ -13,7 +13,7 @@ async function main() {
   const server = http.createServer();
   const io = new SocketIOServer(server, {
     cors: {
-      origin: env.frontendUrl,
+      origin: env.frontendUrls,
       credentials: true,
     },
   });
