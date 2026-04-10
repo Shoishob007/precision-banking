@@ -34,12 +34,13 @@ export function createApp(realtime: RealtimePublisher) {
     callback(new Error("Not allowed by CORS"));
   };
 
-  app.use(
-    cors({
-      origin: corsOrigin,
-      credentials: true,
-    }),
-  );
+  const corsOptions: cors.CorsOptions = {
+    origin: corsOrigin,
+    credentials: true,
+  };
+
+  app.use(cors(corsOptions));
+  app.options("*", cors(corsOptions));
   app.use(express.json());
 
   app.get("/api/health", (_request, response) => {
