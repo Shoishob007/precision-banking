@@ -1,18 +1,14 @@
 {
   "version": 2,
-  "builds": [
-    {
-      "src": "dist/app.js",
-      "use": "@vercel/node"
+  "functions": {
+    "api/[...path].ts": {
+      "runtime": "@vercel/node"
     }
-  ],
-  "routes": [
+  },
+  "rewrites": [
     {
-      "src": "/(.*)",
-      "dest": "dist/app.js"
+      "source": "/",
+      "destination": "/api/health"
     }
-  ],
-  "env": {
-    "NODE_ENV": "production"
-  }
+  ]
 }
