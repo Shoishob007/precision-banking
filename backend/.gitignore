@@ -6,4 +6,6 @@ dist/
 build/
 .DS_Store
 *.log
-.next/
+npm-debug.log
+yarn-error.log
+pnpm-debug.log
