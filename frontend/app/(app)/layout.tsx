@@ -10,7 +10,9 @@ import {
   Moon,
   Sun,
   UserCircle,
-  Wallet
+  Wallet,
+  ShieldUser,
+  Settings
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/context/AuthContext';
@@ -19,11 +21,15 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import { RealtimeProvider } from '@/context/RealtimeContext';
+import GlobalRequestIndicator from '@/components/GlobalRequestIndicator';
+import ProfilePanel from '@/components/ProfilePanel';
+import { useState } from 'react';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { user, logout } = useAuth();
   const { isDarkMode, toggleTheme } = useTheme();
   const pathname = usePathname();
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
 
   const navItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, path: '/dashboard' },
@@ -31,14 +37,33 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     { id: 'transactions', label: 'Transactions', icon: ArrowLeftRight, path: '/transactions' },
     { id: 'ledger', label: 'Ledger', icon: ReceiptText, path: '/ledger' },
     { id: 'notifications', label: 'Notifications', icon: Bell, path: '/notifications' },
+    { id: 'profile', label: 'Profile', icon: Settings, path: '/profile' },
+    ...(user?.role === 'admin'
+      ? [{ id: 'admin', label: 'Admin', icon: ShieldUser, path: '/admin' }]
+      : []),
   ];
 
   const activeTab = navItems.find(item => item.path === pathname)?.id || 'dashboard';
+  const pageTitle = activeTab === 'dashboard'
+    ? 'Account Portfolio'
+    : activeTab === 'accounts'
+      ? 'All Accounts'
+      : activeTab === 'transactions'
+        ? 'Move Money'
+        : activeTab === 'notifications'
+          ? 'Notifications Center'
+          : activeTab === 'profile'
+            ? 'Profile & Security'
+            : activeTab === 'admin'
+              ? 'Admin Control Center'
+              : 'Transaction Ledger';
 
   return (
     <ProtectedRoute>
       <RealtimeProvider>
         <div className="flex min-h-screen bg-surface text-on-surface transition-colors duration-300">
+          <GlobalRequestIndicator />
+
           {/* Sidebar - Desktop */}
           <aside className="hidden lg:flex flex-col w-64 fixed left-0 top-0 h-full bg-surface-container-low border-r border-outline-variant/10 z-50">
             <div className="px-6 py-8">
@@ -82,7 +107,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
             <div className="p-4 mt-auto border-t border-outline-variant/10">
               <button
-                onClick={logout}
+                onClick={() => logout()}
                 className="flex items-center w-full gap-3 px-4 py-3 text-error font-sans text-[10px] font-bold uppercase tracking-widest hover:bg-error-container/10 transition-all rounded-lg"
               >
                 <LogOut size={18} />
@@ -97,15 +122,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <header className="flex justify-between items-center px-8 py-4 w-full bg-surface/80 backdrop-blur-md sticky top-0 z-40 border-b border-outline-variant/10">
               <div className="flex items-center gap-4">
                 <h2 className="text-lg font-bold tracking-tighter text-on-surface capitalize">
-                  {activeTab === 'dashboard'
-                    ? 'Account Portfolio'
-                    : activeTab === 'accounts'
-                      ? 'All Accounts'
-                      : activeTab === 'transactions'
-                        ? 'Move Money'
-                        : activeTab === 'notifications'
-                          ? 'Notifications Center'
-                          : 'Transaction Ledger'}
+                  {pageTitle}
                 </h2>
                 <div className="flex items-center gap-2 bg-secondary-container/20 px-2 py-1 rounded-full">
                   <span className="h-2 w-2 rounded-full bg-secondary animate-pulse"></span>
@@ -126,7 +143,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   >
                     {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
                   </button>
-                  <button className="p-2 hover:bg-surface-container-high rounded-full transition-colors">
+                  <button
+                    className="p-2 hover:bg-surface-container-high rounded-full transition-colors"
+                    onClick={() => setIsProfileOpen(true)}
+                  >
                     <UserCircle size={20} />
                   </button>
                 </div>
@@ -137,6 +157,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <div className="flex-1 overflow-y-auto custom-scrollbar">
               {children}
             </div>
+
+            <ProfilePanel isOpen={isProfileOpen} onClose={() => setIsProfileOpen(false)} />
 
             {/* Mobile Bottom Nav */}
             <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-surface/80 backdrop-blur-xl border-t border-outline-variant/10 z-50">
@@ -155,7 +177,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   </Link>
                 ))}
                 <button
-                  onClick={logout}
+                  onClick={() => logout()}
                   className="flex flex-col items-center gap-1 text-error"
                 >
                   <LogOut size={20} />

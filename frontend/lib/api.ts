@@ -18,6 +18,10 @@ export class ApiError extends Error {
   }
 }
 
+export const API_REQUEST_STARTED_EVENT = "precision:api-request-started";
+export const API_REQUEST_ENDED_EVENT = "precision:api-request-ended";
+export const AUTH_INVALID_EVENT = "precision:auth-invalid";
+
 async function parseJson<T>(response: Response): Promise<T> {
   const text = await response.text();
   return text ? (JSON.parse(text) as T) : ({} as T);
@@ -38,24 +42,47 @@ export async function apiRequest<T>(
     headers.set("Authorization", `Bearer ${token}`);
   }
 
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    ...options,
-    headers,
-    cache: "no-store",
-  });
-
-  const body = await parseJson<T | ApiErrorShape>(response);
-
-  if (!response.ok) {
-    const errorBody = body as ApiErrorShape;
-    throw new ApiError(
-      response.status,
-      errorBody.message ?? "Request failed.",
-      errorBody.details,
-    );
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent(API_REQUEST_STARTED_EVENT));
   }
 
-  return body as T;
+  try {
+    const response = await fetch(`${API_BASE_URL}${path}`, {
+      ...options,
+      headers,
+      cache: "no-store",
+    });
+
+    const body = await parseJson<T | ApiErrorShape>(response);
+
+    if (!response.ok) {
+      const errorBody = body as ApiErrorShape;
+
+      if (response.status === 401 && token && typeof window !== "undefined") {
+        window.dispatchEvent(
+          new CustomEvent(AUTH_INVALID_EVENT, {
+            detail: {
+              message:
+                errorBody.message ??
+                "Your session has expired. Please sign in again.",
+            },
+          }),
+        );
+      }
+
+      throw new ApiError(
+        response.status,
+        errorBody.message ?? "Request failed.",
+        errorBody.details,
+      );
+    }
+
+    return body as T;
+  } finally {
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent(API_REQUEST_ENDED_EVENT));
+    }
+  }
 }
 
 export { API_BASE_URL };

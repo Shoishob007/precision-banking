@@ -30,3 +30,21 @@ export function requireAuth(
     next(new HttpError(401, "Invalid or expired token."));
   }
 }
+
+export function requireAdmin(
+  request: AuthenticatedRequest,
+  _response: Response,
+  next: NextFunction,
+) {
+  if (!request.auth) {
+    next(new HttpError(401, "Authentication required."));
+    return;
+  }
+
+  if (request.auth.role !== "admin") {
+    next(new HttpError(403, "Admin access required."));
+    return;
+  }
+
+  next();
+}

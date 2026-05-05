@@ -26,6 +26,22 @@ function formatTimestamp(timestamp: string) {
   return new Date(timestamp).toLocaleString();
 }
 
+function buildVisiblePages(currentPage: number, totalPages: number): Array<number | 'ellipsis'> {
+  if (totalPages <= 7) {
+    return Array.from({ length: totalPages }, (_, i) => i + 1);
+  }
+
+  if (currentPage <= 3) {
+    return [1, 2, 3, 4, 'ellipsis', totalPages];
+  }
+
+  if (currentPage >= totalPages - 2) {
+    return [1, 'ellipsis', totalPages - 3, totalPages - 2, totalPages - 1, totalPages];
+  }
+
+  return [1, 'ellipsis', currentPage - 1, currentPage, currentPage + 1, 'ellipsis', totalPages];
+}
+
 export default function Ledger() {
   const { token } = useAuth();
   const [currentPage, setCurrentPage] = useState(1);
@@ -70,6 +86,7 @@ export default function Ledger() {
   }, [loadLedgerData]);
 
   const totalPages = useMemo(() => Math.max(1, Math.ceil(totalCount / itemsPerPage)), [totalCount, itemsPerPage]);
+  const visiblePages = useMemo(() => buildVisiblePages(currentPage, totalPages), [currentPage, totalPages]);
 
   const handlePageChange = (page: number) => {
     if (page >= 1 && page <= totalPages) {
@@ -226,20 +243,30 @@ export default function Ledger() {
               <ChevronLeft size={16} />
             </button>
 
-            {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
-              <button
-                key={page}
-                onClick={() => handlePageChange(page)}
-                className={cn(
-                  "h-8 w-8 flex items-center justify-center rounded font-bold text-xs transition-all",
-                  currentPage === page
-                    ? "bg-primary text-on-primary"
-                    : "bg-surface-container-lowest text-on-surface-variant hover:text-primary"
-                )}
-              >
-                {page}
-              </button>
-            ))}
+            {visiblePages.map((page, index) => {
+              if (page === 'ellipsis') {
+                return (
+                  <span key={`ellipsis-${index}`} className="h-8 w-8 flex items-center justify-center text-on-surface-variant">
+                    ...
+                  </span>
+                );
+              }
+
+              return (
+                <button
+                  key={page}
+                  onClick={() => handlePageChange(page)}
+                  className={cn(
+                    "h-8 min-w-8 px-2 flex items-center justify-center rounded font-bold text-xs transition-all",
+                    currentPage === page
+                      ? "bg-primary text-on-primary"
+                      : "bg-surface-container-lowest text-on-surface-variant hover:text-primary"
+                  )}
+                >
+                  {page}
+                </button>
+              );
+            })}
 
             <button
               onClick={() => handlePageChange(currentPage + 1)}

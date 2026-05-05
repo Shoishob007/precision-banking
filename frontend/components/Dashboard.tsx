@@ -4,7 +4,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { motion } from 'motion/react';
 import { TrendingUp, TrendingDown, ArrowRight, Lock, Users } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { Account, ActivityEvent } from '@/types';
+import { Account, ActivityEvent, DashboardMetrics } from '@/types';
 import { useAuth } from '@/context/AuthContext';
 import { apiRequest } from '@/lib/api';
 import { useRealtime, type BalanceUpdatedPayload, type TransactionCreatedPayload, type TransactionFailedPayload } from '@/context/RealtimeContext';
@@ -13,6 +13,8 @@ import MembersPanel from '@/components/MembersPanel';
 interface DashboardSummaryResponse {
   accounts: Account[];
   activity: ActivityEvent[];
+  metrics: DashboardMetrics;
+  recommendedActions: string[];
 }
 
 function formatTimestamp(timestamp: string) {
@@ -24,6 +26,8 @@ export default function Dashboard() {
   const { socket } = useRealtime();
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [recentEvents, setRecentEvents] = useState<ActivityEvent[]>([]);
+  const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
+  const [recommendedActions, setRecommendedActions] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedAccountForMembers, setSelectedAccountForMembers] = useState<Account | null>(null);
@@ -40,6 +44,8 @@ export default function Dashboard() {
       .then((data) => {
         setAccounts(data.accounts);
         setRecentEvents(data.activity);
+        setMetrics(data.metrics);
+        setRecommendedActions(data.recommendedActions);
       })
       .catch((requestError: Error) => {
         setError(requestError.message);
@@ -199,8 +205,37 @@ export default function Dashboard() {
         })}
       </div>
 
+      {metrics && (
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+          <div className="rounded-xl bg-surface-container-low p-5">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant mb-2">Total Balance</p>
+            <p className="text-2xl font-black tracking-tighter text-on-surface">
+              ${metrics.totalBalance.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+            </p>
+          </div>
+          <div className="rounded-xl bg-surface-container-low p-5">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant mb-2">Successful Inflow</p>
+            <p className="text-2xl font-black tracking-tighter text-secondary">
+              ${metrics.successfulInflow.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+            </p>
+          </div>
+          <div className="rounded-xl bg-surface-container-low p-5">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant mb-2">Successful Outflow</p>
+            <p className="text-2xl font-black tracking-tighter text-on-surface">
+              ${metrics.successfulOutflow.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+            </p>
+          </div>
+          <div className="rounded-xl bg-surface-container-low p-5">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant mb-2">Review Queue</p>
+            <p className="text-2xl font-black tracking-tighter text-primary">
+              {metrics.lockedAccounts + (metrics.failedAmount > 0 ? 1 : 0)}
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Activity Layer */}
-      <div>
+      <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1.6fr)_360px] gap-6 items-start">
         <div>
           <div className="flex items-center justify-between mb-6">
             <h4 className="text-xs font-bold uppercase tracking-widest text-on-surface-variant">Recent Ledger Ingress</h4>
@@ -230,6 +265,47 @@ export default function Dashboard() {
             ))}
           </div>
         </div>
+
+        <aside className="space-y-4">
+          <div className="rounded-xl bg-surface-container-low p-5">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant mb-3">Recommended Actions</p>
+            <div className="space-y-3">
+              {recommendedActions.length > 0 ? recommendedActions.map((action) => (
+                <div key={action} className="rounded-lg bg-surface-container-lowest px-3 py-3 text-sm text-on-surface">
+                  {action}
+                </div>
+              )) : (
+                <div className="rounded-lg bg-surface-container-lowest px-3 py-3 text-sm text-on-surface-variant">
+                  Your portfolio is in a healthy state right now.
+                </div>
+              )}
+            </div>
+          </div>
+
+          {metrics && (
+            <div className="rounded-xl bg-surface-container-low p-5">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant mb-3">Control Coverage</p>
+              <div className="space-y-3 text-sm text-on-surface">
+                <div className="flex items-center justify-between">
+                  <span>Total Accounts</span>
+                  <span className="font-bold">{metrics.totalAccounts}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span>Shared Accounts</span>
+                  <span className="font-bold">{metrics.sharedAccounts}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span>Locked Accounts</span>
+                  <span className="font-bold">{metrics.lockedAccounts}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span>Failed Volume</span>
+                  <span className="font-bold">${metrics.failedAmount.toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
+                </div>
+              </div>
+            </div>
+          )}
+        </aside>
       </div>
 
       {selectedAccountForMembers && (

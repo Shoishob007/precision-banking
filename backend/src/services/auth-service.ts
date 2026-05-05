@@ -2,7 +2,8 @@ import jwt from "jsonwebtoken";
 import type { PoolClient } from "pg";
 import { pool } from "../db/pool.js";
 import { env } from "../config/env.js";
-import type { AuthTokenPayload } from "../types/domain.js";
+import type { AuthTokenPayload, UserRole } from "../types/domain.js";
+import { buildUserSelectFields, getUserColumnSupport } from "./user-columns.js";
 import { createAccountNumber } from "../utils/ids.js";
 import { hashPassword, verifyPassword } from "../utils/passwords.js";
 import { HttpError } from "../utils/http-error.js";
@@ -11,6 +12,11 @@ interface UserRow {
   id: string;
   full_name: string;
   email: string;
+  role: UserRole;
+  phone_number: string | null;
+  job_title: string | null;
+  two_factor_enabled: boolean;
+  last_login_at: string | null;
 }
 
 interface UserWithPasswordRow extends UserRow {
@@ -26,7 +32,18 @@ function mapUser(row: UserRow) {
     id: row.id,
     name: row.full_name,
     email: row.email,
+    role: row.role,
+    phoneNumber: row.phone_number,
+    jobTitle: row.job_title,
+    twoFactorEnabled: row.two_factor_enabled,
+    lastLoginAt: row.last_login_at,
   };
+}
+
+function validatePassword(password: string) {
+  if (password.length < 8) {
+    throw new HttpError(400, "Password must be at least 8 characters long.");
+  }
 }
 
 async function createStarterAccounts(
@@ -79,6 +96,8 @@ export async function registerUser(input: {
   email: string;
   password: string;
 }) {
+  validatePassword(input.password);
+  const support = await getUserColumnSupport();
   const email = input.email.trim().toLowerCase();
   const client = await pool.connect();
 
@@ -86,7 +105,7 @@ export async function registerUser(input: {
     await client.query("BEGIN");
 
     const existing = await client.query<UserRow>(
-      `SELECT id, full_name, email FROM users WHERE email = $1 LIMIT 1`,
+      `SELECT ${buildUserSelectFields(support)} FROM users WHERE email = $1 LIMIT 1`,
       [email],
     );
 
@@ -94,11 +113,19 @@ export async function registerUser(input: {
       throw new HttpError(409, "Email already registered.");
     }
 
+    const insertColumns = ["full_name", "email", "password_hash"];
+    const insertValues = ["$1", "$2", "$3"];
+
+    if (support.lastLoginAt) {
+      insertColumns.push("last_login_at");
+      insertValues.push("NOW()");
+    }
+
     const result = await client.query<UserRow>(
       `
-        INSERT INTO users (full_name, email, password_hash)
-        VALUES ($1, $2, $3)
-        RETURNING id, full_name, email
+        INSERT INTO users (${insertColumns.join(", ")})
+        VALUES (${insertValues.join(", ")})
+        RETURNING ${buildUserSelectFields(support)}
       `,
       [input.name.trim(), email, hashPassword(input.password)],
     );
@@ -109,7 +136,7 @@ export async function registerUser(input: {
     await client.query("COMMIT");
 
     return {
-      token: signToken({ userId: user.id, email: user.email }),
+      token: signToken({ userId: user.id, email: user.email, role: user.role }),
       user: mapUser(user),
     };
   } catch (error) {
@@ -121,10 +148,12 @@ export async function registerUser(input: {
 }
 
 export async function loginUser(input: { email: string; password: string }) {
+  validatePassword(input.password);
+  const support = await getUserColumnSupport();
   const email = input.email.trim().toLowerCase();
   const result = await pool.query<UserWithPasswordRow>(
     `
-      SELECT id, full_name, email, password_hash
+      SELECT ${buildUserSelectFields(support)}, password_hash
       FROM users
       WHERE email = $1
       LIMIT 1
@@ -138,8 +167,35 @@ export async function loginUser(input: { email: string; password: string }) {
     throw new HttpError(401, "Invalid email or password.");
   }
 
+  const updated = support.lastLoginAt
+    ? await pool.query<UserRow>(
+        `
+          UPDATE users
+          SET last_login_at = NOW(),
+              updated_at = NOW()
+          WHERE id = $1
+          RETURNING ${buildUserSelectFields(support)}
+        `,
+        [user.id],
+      )
+    : await pool.query<UserRow>(
+        `
+          SELECT ${buildUserSelectFields(support)}
+          FROM users
+          WHERE id = $1
+          LIMIT 1
+        `,
+        [user.id],
+      );
+
+  const currentUser = updated.rows[0] ?? user;
+
   return {
-    token: signToken({ userId: user.id, email: user.email }),
-    user: mapUser(user),
+    token: signToken({
+      userId: currentUser.id,
+      email: currentUser.email,
+      role: currentUser.role,
+    }),
+    user: mapUser(currentUser),
   };
 }

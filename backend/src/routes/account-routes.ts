@@ -1,8 +1,10 @@
 import { Router } from "express";
 import { requireAuth, type AuthenticatedRequest } from "../middleware/auth.js";
 import {
+  createAccountForUser,
   getAccountForUser,
   listAccountsForUser,
+  updateOwnAccountStatus,
 } from "../services/account-service.js";
 import {
   listAccountMembers,
@@ -28,6 +30,29 @@ accountRouter.get(
   },
 );
 
+accountRouter.post(
+  "/",
+  async (request: AuthenticatedRequest, response, next) => {
+    try {
+      const { name, type, openingBalance } = request.body ?? {};
+
+      if (!name || !type) {
+        throw new HttpError(400, "name and type are required.");
+      }
+
+      const account = await createAccountForUser(request.auth!.userId, {
+        name,
+        type,
+        openingBalance: Number(openingBalance ?? 0),
+      });
+
+      response.status(201).json({ account });
+    } catch (error) {
+      next(error);
+    }
+  },
+);
+
 accountRouter.get(
   "/:accountId",
   async (request: AuthenticatedRequest, response, next) => {
@@ -36,6 +61,29 @@ accountRouter.get(
         request.auth!.userId,
         request.params.accountId,
       );
+      response.json({ account });
+    } catch (error) {
+      next(error);
+    }
+  },
+);
+
+accountRouter.patch(
+  "/:accountId/status",
+  async (request: AuthenticatedRequest, response, next) => {
+    try {
+      const { status } = request.body ?? {};
+
+      if (!status) {
+        throw new HttpError(400, "status is required.");
+      }
+
+      const account = await updateOwnAccountStatus(
+        request.auth!.userId,
+        request.params.accountId,
+        status,
+      );
+
       response.json({ account });
     } catch (error) {
       next(error);

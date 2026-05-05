@@ -1,6 +1,8 @@
 export type TransactionType = "deposit" | "withdraw" | "transfer";
 export type TransactionStatus = "success" | "failed" | "pending";
 export type AccountMemberRole = "owner" | "editor" | "viewer";
+export type UserRole = "customer" | "admin";
+export type AccountStatus = "active" | "standard" | "pending" | "locked";
 
 export interface Transaction {
   id: string;
@@ -25,7 +27,7 @@ export interface Account {
   balance: number;
   change?: number;
   changeType?: "up" | "down";
-  status: "active" | "standard" | "pending" | "locked";
+  status: AccountStatus;
   versionNumber: number;
   versionLabel: string;
   holderName: string;
@@ -60,4 +62,44 @@ export interface AuthUser {
   id: string;
   name: string;
   email: string;
+  role: UserRole;
+  phoneNumber?: string | null;
+  jobTitle?: string | null;
+  twoFactorEnabled?: boolean;
+  lastLoginAt?: string | null;
+  createdAt?: string;
+}
+
+export interface DashboardMetrics {
+  totalBalance: number;
+  lockedAccounts: number;
+  sharedAccounts: number;
+  totalAccounts: number;
+  successfulInflow: number;
+  successfulOutflow: number;
+  failedAmount: number;
+}
+
+export interface AdminMetrics {
+  totalUsers: number;
+  totalAccounts: number;
+  totalTransactions: number;
+  lockedAccounts: number;
+  sharedAccounts: number;
+  totalBalance: number;
+}
+
+export interface AdminManagedAccount {
+  id: string;
+  accountId: string;
+  name: string;
+  type: string;
+  holderName: string;
+  balance: number;
+  status: AccountStatus;
+  versionNumber: number;
+  versionLabel: string;
+  ownerName: string;
+  updatedAt?: string | null;
+  memberCount?: number;
 }

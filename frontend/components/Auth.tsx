@@ -8,7 +8,7 @@ import { useAuth } from '@/context/AuthContext';
 import { ApiError } from '@/lib/api';
 
 export default function Auth() {
-  const { login, register } = useAuth();
+  const { login, register, authError } = useAuth();
   const [isLogin, setIsLogin] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -84,6 +84,12 @@ export default function Auth() {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
+          {authError && (
+            <div className="rounded-xl border border-error/20 bg-error-container/10 px-4 py-3 text-xs font-medium text-error">
+              {authError}
+            </div>
+          )}
+
           {!isLogin && (
             <motion.div
               initial={{ opacity: 0, height: 0 }}

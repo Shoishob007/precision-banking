@@ -2,15 +2,19 @@
 
 import React, { useEffect, useState } from 'react';
 import { motion } from 'motion/react';
-import { Users, Lock, Wallet, Layers3 } from 'lucide-react';
+import { Users, Lock, Wallet, Layers3, PlusCircle, ShieldCheck } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
-import { apiRequest } from '@/lib/api';
-import type { Account } from '@/types';
+import { ApiError, apiRequest } from '@/lib/api';
+import type { Account, AccountStatus } from '@/types';
 import { cn } from '@/lib/utils';
 import MembersPanel from '@/components/MembersPanel';
 
 interface AccountsResponse {
     accounts: Account[];
+}
+
+interface AccountResponse {
+    account: Account;
 }
 
 export default function Accounts() {
@@ -20,26 +24,83 @@ export default function Accounts() {
     const [error, setError] = useState<string | null>(null);
     const [filterShared, setFilterShared] = useState(false);
     const [selectedAccountForMembers, setSelectedAccountForMembers] = useState<Account | null>(null);
+    const [newAccountName, setNewAccountName] = useState('');
+    const [newAccountType, setNewAccountType] = useState('Personal Checking');
+    const [openingBalance, setOpeningBalance] = useState('0');
+    const [isCreatingAccount, setIsCreatingAccount] = useState(false);
+    const [actionFeedback, setActionFeedback] = useState<string | null>(null);
 
-    useEffect(() => {
+    async function loadAccounts() {
         if (!token) return;
 
-        (async () => {
-            try {
-                const data = await apiRequest<AccountsResponse>('/api/accounts', {}, token);
-                setAccounts(data.accounts);
-            } catch (err) {
-                setError(err instanceof Error ? err.message : 'Failed to load accounts');
-            } finally {
-                setIsLoading(false);
-            }
-        })();
+        try {
+            const data = await apiRequest<AccountsResponse>('/api/accounts', {}, token);
+            setAccounts(data.accounts);
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Failed to load accounts');
+        } finally {
+            setIsLoading(false);
+        }
+    }
+
+    useEffect(() => {
+        void loadAccounts();
     }, [token]);
 
     const filteredAccounts = filterShared ? accounts.filter((a) => a.isShared) : accounts;
     const sharedAccounts = accounts.filter((a) => a.isShared);
     const ownedAccounts = accounts.filter((a) => a.userRole === 'owner' && !a.isShared);
     const totalBalance = filteredAccounts.reduce((sum, account) => sum + account.balance, 0);
+
+    async function handleCreateAccount(e: React.FormEvent) {
+        e.preventDefault();
+        if (!token) return;
+
+        setIsCreatingAccount(true);
+        setError(null);
+        setActionFeedback(null);
+
+        try {
+            const data = await apiRequest<AccountResponse>('/api/accounts', {
+                method: 'POST',
+                body: JSON.stringify({
+                    name: newAccountName,
+                    type: newAccountType,
+                    openingBalance: Number(openingBalance),
+                }),
+            }, token);
+
+            setAccounts((prev) => [data.account, ...prev].sort((a, b) => a.accountId.localeCompare(b.accountId)));
+            setNewAccountName('');
+            setNewAccountType('Personal Checking');
+            setOpeningBalance('0');
+            setActionFeedback(`Created ${data.account.name} (${data.account.accountId})`);
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Failed to create account');
+        } finally {
+            setIsCreatingAccount(false);
+        }
+    }
+
+    async function handleStatusChange(accountId: string, status: Extract<AccountStatus, 'active' | 'locked' | 'standard'>) {
+        if (!token) return;
+
+        setError(null);
+        setActionFeedback(null);
+
+        try {
+            const data = await apiRequest<AccountResponse>(`/api/accounts/${accountId}/status`, {
+                method: 'PATCH',
+                body: JSON.stringify({ status }),
+            }, token);
+
+            setAccounts((prev) => prev.map((account) => account.accountId === accountId ? { ...account, ...data.account } : account));
+            setActionFeedback(`Updated ${accountId} to ${status}`);
+        } catch (err) {
+            const message = err instanceof ApiError ? err.message : 'Failed to update account status';
+            setError(message);
+        }
+    }
 
     return (
         <div className="p-8 lg:p-12 w-full space-y-10">
@@ -54,6 +115,12 @@ export default function Accounts() {
             {error && (
                 <div className="rounded-xl border border-error/20 bg-error-container/10 px-4 py-3 text-sm text-error">
                     {error}
+                </div>
+            )}
+
+            {actionFeedback && (
+                <div className="rounded-xl border border-secondary/20 bg-secondary-container/20 px-4 py-3 text-sm text-on-surface">
+                    {actionFeedback}
                 </div>
             )}
 
@@ -97,6 +164,86 @@ export default function Accounts() {
                     <p className="text-3xl font-black tracking-tighter text-on-surface">
                         ${totalBalance.toLocaleString('en-US', { minimumFractionDigits: 2 })}
                     </p>
+                </div>
+            </div>
+
+            <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1.5fr)_380px] gap-6 items-start">
+                <div className="rounded-xl bg-surface-container-low p-6">
+                    <div className="flex items-center gap-3 mb-4">
+                        <PlusCircle size={18} className="text-primary" />
+                        <div>
+                            <h4 className="text-sm font-bold uppercase tracking-widest text-on-surface">Open a New Account</h4>
+                            <p className="text-xs text-on-surface-variant mt-1">Add another operational, reserve, or savings lane without leaving the app.</p>
+                        </div>
+                    </div>
+                    <form onSubmit={handleCreateAccount} className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <input
+                            value={newAccountName}
+                            onChange={(e) => setNewAccountName(e.target.value)}
+                            placeholder="Travel Reserve"
+                            className="rounded-lg bg-surface-container-lowest px-4 py-3 text-sm text-on-surface"
+                            required
+                        />
+                        <select
+                            value={newAccountType}
+                            onChange={(e) => setNewAccountType(e.target.value)}
+                            className="rounded-lg bg-surface-container-lowest px-4 py-3 text-sm text-on-surface"
+                        >
+                            <option>Personal Checking</option>
+                            <option>Savings</option>
+                            <option>Emergency Fund</option>
+                            <option>Business Operations</option>
+                        </select>
+                        <div className="flex gap-3">
+                            <input
+                                value={openingBalance}
+                                onChange={(e) => setOpeningBalance(e.target.value)}
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                placeholder="0.00"
+                                className="min-w-0 flex-1 rounded-lg bg-surface-container-lowest px-4 py-3 text-sm text-on-surface"
+                            />
+                            <button
+                                type="submit"
+                                disabled={isCreatingAccount}
+                                className="rounded-lg bg-primary px-4 py-3 text-xs font-bold uppercase tracking-widest text-on-primary disabled:opacity-60"
+                            >
+                                {isCreatingAccount ? 'Creating...' : 'Create'}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <div className="rounded-xl bg-surface-container-low p-6">
+                    <div className="flex items-center gap-3 mb-4">
+                        <ShieldCheck size={18} className="text-secondary" />
+                        <div>
+                            <h4 className="text-sm font-bold uppercase tracking-widest text-on-surface">Owner Controls</h4>
+                            <p className="text-xs text-on-surface-variant mt-1">Freeze accounts during testing, normalize them later, and practice safer operational flows.</p>
+                        </div>
+                    </div>
+                    <div className="space-y-3">
+                        {ownedAccounts.slice(0, 4).map((account) => (
+                            <div key={account.id} className="rounded-lg bg-surface-container-lowest p-4">
+                                <div className="flex items-center justify-between gap-3">
+                                    <div>
+                                        <p className="text-sm font-bold text-on-surface">{account.name}</p>
+                                        <p className="text-[10px] uppercase tracking-widest text-on-surface-variant">{account.accountId}</p>
+                                    </div>
+                                    <select
+                                        value={account.status}
+                                        onChange={(e) => void handleStatusChange(account.accountId, e.target.value as Extract<AccountStatus, 'active' | 'locked' | 'standard'>)}
+                                        className="rounded-md bg-surface-container-low px-3 py-2 text-xs font-bold uppercase tracking-widest text-on-surface"
+                                    >
+                                        <option value="active">Active</option>
+                                        <option value="standard">Standard</option>
+                                        <option value="locked">Locked</option>
+                                    </select>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
                 </div>
             </div>
 

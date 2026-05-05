@@ -3,10 +3,12 @@ import cors from "cors";
 import { env } from "./config/env.js";
 import type { RealtimePublisher } from "./realtime.js";
 import { accountRouter } from "./routes/account-routes.js";
+import { adminRouter } from "./routes/admin-routes.js";
 import { authRouter } from "./routes/auth-routes.js";
 import { dashboardRouter } from "./routes/dashboard-routes.js";
 import { createTransactionRouter } from "./routes/transaction-routes.js";
 import { errorHandler } from "./middleware/error-handler.js";
+import { userRouter } from "./routes/user-routes.js";
 
 const noopRealtimePublisher: RealtimePublisher = {
   emitTransactionCreated() {},
@@ -48,9 +50,11 @@ export function createApp(realtime: RealtimePublisher) {
   });
 
   app.use("/api/auth", authRouter);
+  app.use("/api/admin", adminRouter);
   app.use("/api/accounts", accountRouter);
   app.use("/api/dashboard", dashboardRouter);
   app.use("/api/transactions", createTransactionRouter(realtime));
+  app.use("/api/users", userRouter);
 
   app.use(errorHandler);
 

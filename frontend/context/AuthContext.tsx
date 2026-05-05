@@ -1,16 +1,18 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { apiRequest } from '@/lib/api';
+import { apiRequest, AUTH_INVALID_EVENT } from '@/lib/api';
 import type { AuthUser } from '@/types';
 
 interface AuthContextType {
   user: AuthUser | null;
   token: string | null;
   isAuthLoading: boolean;
+  authError: string | null;
   login: (credentials: { email: string; password: string }) => Promise<void>;
   register: (payload: { name: string; email: string; password: string }) => Promise<void>;
-  logout: () => void;
+  logout: (reason?: string) => void;
+  updateUser: (user: AuthUser) => void;
 }
 
 const AUTH_STORAGE_KEY = 'precision-banking-auth';
@@ -26,6 +28,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [isAuthLoading, setIsAuthLoading] = useState(true);
+  const [authError, setAuthError] = useState<string | null>(null);
 
   useEffect(() => {
     const stored = localStorage.getItem(AUTH_STORAGE_KEY);
@@ -46,7 +49,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const persistAuth = (auth: AuthResponse) => {
     setUser(auth.user);
     setToken(auth.token);
+    setAuthError(null);
     localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(auth));
+  };
+
+  const updateUser = (nextUser: AuthUser) => {
+    setUser(nextUser);
+    setAuthError(null);
+    if (token) {
+      localStorage.setItem(
+        AUTH_STORAGE_KEY,
+        JSON.stringify({ token, user: nextUser } satisfies AuthResponse),
+      );
+    }
   };
 
   const login = async (credentials: { email: string; password: string }) => {
@@ -67,14 +82,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     persistAuth(auth);
   };
 
-  const logout = () => {
+  const logout = (reason?: string) => {
     setUser(null);
     setToken(null);
+    setAuthError(reason ?? null);
     localStorage.removeItem(AUTH_STORAGE_KEY);
   };
 
+  useEffect(() => {
+    const onInvalidAuth = (event: Event) => {
+      const customEvent = event as CustomEvent<{ message?: string }>;
+      logout(customEvent.detail?.message ?? 'Session expired. Please log in again.');
+    };
+
+    window.addEventListener(AUTH_INVALID_EVENT, onInvalidAuth as EventListener);
+    return () => {
+      window.removeEventListener(AUTH_INVALID_EVENT, onInvalidAuth as EventListener);
+    };
+  }, []);
+
   return (
-    <AuthContext.Provider value={{ user, token, isAuthLoading, login, register, logout }}>
+    <AuthContext.Provider value={{ user, token, isAuthLoading, authError, login, register, logout, updateUser }}>
       {children}
     </AuthContext.Provider>
   );

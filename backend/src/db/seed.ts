@@ -53,6 +53,19 @@ async function main() {
 
     await client.query(
       `
+        UPDATE users
+        SET role = 'admin',
+            job_title = 'Platform Administrator',
+            phone_number = '+1 202 555 0199',
+            two_factor_enabled = TRUE,
+            last_login_at = NOW(),
+            updated_at = NOW()
+        WHERE email = 'julian@vance.corp'
+      `,
+    );
+
+    await client.query(
+      `
         INSERT INTO accounts (user_id, account_id, holder_name, display_name, account_type, balance, status, version)
         VALUES
           ($1, 'ACC1001', 'Julian Vance', 'Private Reserve', 'Wealth Management', 1248092.45, 'active', 2),
